@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة كايزن YLY</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Firebase Auth & Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+</head>
+<body class="bg-[#F0F5FA] font-sans text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3UqEDpP2Llt7ZkloqmlURGULdKEiWF3o",
+            authDomain: "yly-2026.firebaseapp.com",
+            projectId: "yly-2026",
+            storageBucket: "yly-2026.firebasestorage.app",
+            messagingSenderId: "599868603298",
+            appId: "1:599868603298:web:f66010961895c707cb10fb",
+            measurementId: "G-ZHGYFH7EPT"
+        };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        function AdminPanel() {
+            const [user, setUser] = useState(null);
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [ideas, setIdeas] = useState([]);
+            const [error, setError] = useState('');
+            const ADMIN_UID = "F1qZJunfEsdKP1SZyDcEDRjrzMM2";
+
+            useEffect(() => {
+                const unsubscribe = auth.onAuthStateChanged(currentUser => {
+                    if (currentUser && currentUser.uid === ADMIN_UID) {
+                        setUser(currentUser);
+                        fetchIdeas();
+                    } else {
+                        setUser(null);
+                        if (currentUser) auth.signOut();
+                    }
+                });
+                return () => unsubscribe();
+            }, []);
+
+            const fetchIdeas = () => {
+                db.collection('ideas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+                    setIdeas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                });
+            };
+
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                setError('');
+                try {
+                    const cred = await auth.signInWithEmailAndPassword(email, password);
+                    if (cred.user.uid !== ADMIN_UID) {
+                        setError('عفواً، حسابك ليس لديه صلاحيات الإدارة.');
+                        auth.signOut();
+                    }
+                } catch (err) {
+                    setError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+                }
+            };
+
+            const updateStatus = (id, newStatus) => {
+                db.collection('ideas').doc(id).update({ status: newStatus });
+            };
+
+            const deleteIdea = (id) => {
+                if (window.confirm('هل أنت متأكد من الحذف النهائي لهذه الفكرة؟ لا يمكن التراجع.')) {
+                    db.collection('ideas').doc(id).delete();
+                }
+            };
+
+            if (!user) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <form onSubmit={handleLogin} className="bg-white p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,32,96,0.04)] w-full max-w-md border border-white">
+                            <div className="flex justify-center mb-6">
+                                <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-16 h-16 drop-shadow-sm" />
+                            </div>
+                            <h2 className="text-2xl font-black text-[#002060] text-center mb-6">لوحة الإدارة - كايزن YLY</h2>
+                            {error && <div className="bg-red-50 text-[#E30613] p-3 rounded-xl text-sm font-bold text-center mb-4">{error}</div>}
+                            <div className="space-y-4">
+                                <input type="email" placeholder="البريد الإلكتروني للإدارة" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#002060] outline-none bg-slate-50/50 text-sm font-bold" required />
+                                <input type="password" placeholder="كلمة المرور" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#002060] outline-none bg-slate-50/50 text-sm font-bold" required />
+                                <button type="submit" className="w-full bg-[#E30613] hover:bg-red-700 text-white py-4 rounded-2xl font-bold transition-all shadow-[0_8px_20px_rgb(227,6,19,0.2)] mt-2">تسجيل الدخول</button>
+                            </div>
+                            <a href="index.html" className="block text-center mt-6 text-sm text-slate-400 font-bold hover:text-[#002060]">العودة للموقع الرئيسي</a>
+                        </form>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="max-w-6xl mx-auto p-4 md:p-8">
+                    <header className="flex justify-between items-center mb-8 bg-white p-5 md:p-6 rounded-[2rem] shadow-[0_4px_20px_rgb(0,32,96,0.03)] border border-white">
+                        <div className="flex items-center gap-3">
+                            <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-10 h-10" />
+                            <div>
+                                <h1 className="text-xl md:text-2xl font-black text-[#002060]">إدارة الأفكار</h1>
+                                <p className="text-xs font-bold text-[#E30613]">بوابة التحكم الخاصة بكايزن</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <a href="index.html" className="text-sm font-bold text-[#002060] hover:underline hidden md:block">تصفح الموقع</a>
+                            <button onClick={() => auth.signOut()} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors">خروج</button>
+                        </div>
+                    </header>
+
+                    <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgb(0,32,96,0.04)] overflow-hidden border border-white">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-right whitespace-nowrap">
+                                <thead className="bg-slate-50 border-b border-slate-100">
+                                    <tr>
+                                        <th className="p-5 font-bold text-slate-600 text-sm">عنوان الفكرة</th>
+                                        <th className="p-5 font-bold text-slate-600 text-sm">اللجنة</th>
+                                        <th className="p-5 font-bold text-slate-600 text-sm">الحالة (تعديل)</th>
+                                        <th className="p-5 font-bold text-slate-600 text-sm text-center">الدعم</th>
+                                        <th className="p-5 font-bold text-slate-600 text-sm text-center">إجراء</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {ideas.map(idea => (
+                                        <tr key={idea.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="p-5">
+                                                <p className="font-bold text-[#002060] truncate max-w-[200px] md:max-w-xs">{idea.title}</p>
+                                                <p className="text-xs text-slate-400 mt-1">{idea.timeAgo}</p>
+                                            </td>
+                                            <td className="p-5">
+                                                <span className="text-xs font-bold text-[#E30613] bg-red-50 px-3 py-1 rounded-lg">{idea.committee}</span>
+                                            </td>
+                                            <td className="p-5">
+                                                <select value={idea.status} onChange={(e) => updateStatus(idea.id, e.target.value)} className="border border-slate-200 p-2 rounded-xl bg-white text-sm font-bold text-slate-700 outline-none focus:border-[#002060] shadow-sm">
+                                                    <option value="قيد المراجعة">قيد المراجعة</option>
+                                                    <option value="جاري التنفيذ">جاري التنفيذ</option>
+                                                    <option value="مكتمل">مكتمل</option>
+                                                </select>
+                                            </td>
+                                            <td className="p-5 text-center font-bold text-slate-700">
+                                                {idea.upvotes} <span className="text-orange-500">🔥</span>
+                                            </td>
+                                            <td className="p-5 text-center">
+                                                <button onClick={() => deleteIdea(idea.id)} className="bg-red-50 text-[#E30613] hover:bg-[#E30613] hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors border border-red-100">حذف نهائي</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AdminPanel />);
+    </script>
+</body>
+</html>
