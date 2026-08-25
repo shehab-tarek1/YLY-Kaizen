@@ -154,10 +154,10 @@
             if (!user) {
                 return (
                     <div className="min-h-screen flex items-center justify-center p-4">
-                        <form onSubmit={handleLogin} className="bg-white p-6 md:p-8 rounded-2xl shadow-[0_2px_12px_rgba(0,32,96,0.04)] w-full max-w-sm border border-slate-200/70">
+                        <form onSubmit={handleLogin} className="bg-white p-6 md:p-8 rounded-2xl shadow-sm w-full max-w-sm border border-slate-200/70">
                             <div className="flex justify-center mb-4">
-                                <div className="w-14 h-14 rounded-full overflow-hidden shadow-sm ring-1 ring-slate-200 bg-white">
-                                    <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-110" />
+                                <div className="w-14 h-14 rounded-full overflow-hidden shadow-sm ring-1 ring-slate-200 bg-[#001845]">
+                                    <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
                                 </div>
                             </div>
                             <h2 className="text-lg md:text-xl font-black text-[#002060] text-center mb-4">لوحة إدارة كايزن YLY</h2>
@@ -184,10 +184,10 @@
                         </div>
                     )}
 
-                    <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 bg-white p-4 md:p-5 rounded-2xl shadow-[0_2px_8px_rgba(0,32,96,0.03)] border border-slate-200/70">
+                    <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200/70">
                         <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 shadow-sm ring-1 ring-slate-200 bg-white">
-                                <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-110" />
+                            <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 shadow-sm ring-1 ring-slate-200 bg-[#001845]">
+                                <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
                             </div>
                             <div>
                                 <h1 className="text-base md:text-lg font-black text-[#002060]">إدارة أفكار كايزن</h1>
@@ -200,7 +200,7 @@
                         </div>
                     </header>
 
-                    {/* أدوات البحث والفلترة */}
+                    {/* شريط البحث والفلترة مع إضافة مرفوض */}
                     <div className="flex flex-col sm:flex-row gap-2.5 mb-4">
                         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث بعنوان الفكرة أو اسم صاحبها..." className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200/80 bg-white text-xs font-bold transition-colors" />
                         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3.5 py-2.5 rounded-xl border border-slate-200/80 bg-white text-xs font-bold text-slate-700">
@@ -208,10 +208,11 @@
                             <option value="قيد المراجعة">قيد المراجعة</option>
                             <option value="جاري التنفيذ">جاري التنفيذ</option>
                             <option value="مكتمل">مكتمل</option>
+                            <option value="مرفوض">مرفوض</option>
                         </select>
                     </div>
 
-                    {/* عرض مخصص للهاتف (Cards بدون تمرير جانبي) */}
+                    {/* عرض البطاقات في الهاتف */}
                     <div className="block md:hidden space-y-3">
                         {!ideasLoaded && [1,2,3].map(n => (
                             <div key={n} className="bg-white p-4 rounded-xl border border-slate-200/70 space-y-2">
@@ -225,13 +226,13 @@
                             </div>
                         )}
                         {filteredIdeas.map(idea => (
-                            <div key={idea.id} className="bg-white p-3.5 rounded-2xl border border-slate-200/70 shadow-[0_2px_6px_rgba(0,0,0,0.02)] space-y-2.5">
+                            <div key={idea.id} className="bg-white p-3.5 rounded-2xl border border-slate-200/70 shadow-xs space-y-2">
                                 <div>
                                     <div className="flex items-start justify-between gap-2 mb-1">
                                         <h3 className="font-bold text-xs text-[#002060] leading-snug">{idea.title}</h3>
-                                        <span className="text-[9px] font-bold text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-100/70 shrink-0">{idea.committee}</span>
+                                        <span className="text-[9px] font-bold text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-100/70 shrink-0">اللجنة: {idea.committee}</span>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 font-medium">{idea.author} · {idea.timeAgo}</p>
+                                    <p className="text-[10px] text-slate-400 font-medium">صاحب الفكرة: {idea.author} · {idea.timeAgo}</p>
                                 </div>
 
                                 <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
@@ -239,11 +240,12 @@
                                         disabled={busyId === idea.id}
                                         value={idea.status}
                                         onChange={(e) => updateStatus(idea.id, e.target.value)}
-                                        className="border border-slate-200/80 px-2.5 py-1.5 rounded-lg bg-slate-50 text-[11px] font-bold text-slate-700"
+                                        className="border border-slate-200/80 px-2 py-1 rounded-lg bg-slate-50 text-[11px] font-bold text-slate-700"
                                     >
                                         <option value="قيد المراجعة">قيد المراجعة</option>
                                         <option value="جاري التنفيذ">جاري التنفيذ</option>
                                         <option value="مكتمل">مكتمل</option>
+                                        <option value="مرفوض">مرفوض</option>
                                     </select>
 
                                     <div className="flex items-center gap-2">
@@ -253,7 +255,7 @@
                                         <button
                                             disabled={busyId === idea.id}
                                             onClick={() => deleteIdea(idea.id)}
-                                            className="bg-red-50 text-[#E30613] hover:bg-[#E30613] hover:text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors border border-red-100"
+                                            className="bg-red-50 text-[#E30613] hover:bg-[#E30613] hover:text-white px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors border border-red-100"
                                         >
                                             {busyId === idea.id ? <span className="spinner"></span> : 'حذف'}
                                         </button>
@@ -263,13 +265,13 @@
                         ))}
                     </div>
 
-                    {/* عرض كلاسيكي منظم للابتوب والشاشات الكبيرة */}
-                    <div className="hidden md:block bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,32,96,0.03)] overflow-hidden border border-slate-200/70">
+                    {/* عرض الجدول في اللابتوب */}
+                    <div className="hidden md:block bg-white rounded-2xl shadow-xs overflow-hidden border border-slate-200/70">
                         <table className="w-full text-right whitespace-nowrap">
                             <thead className="bg-slate-50 border-b border-slate-100">
                                 <tr>
                                     <th className="p-3.5 font-bold text-slate-600 text-xs">عنوان الفكرة</th>
-                                    <th className="p-3.5 font-bold text-slate-600 text-xs">اللجنة</th>
+                                    <th className="p-3.5 font-bold text-slate-600 text-xs">اللجنة المعنية</th>
                                     <th className="p-3.5 font-bold text-slate-600 text-xs">الحالة</th>
                                     <th className="p-3.5 font-bold text-slate-600 text-xs text-center">الدعم</th>
                                     <th className="p-3.5 font-bold text-slate-600 text-xs text-center">إجراء</th>
@@ -298,6 +300,7 @@
                                                 <option value="قيد المراجعة">قيد المراجعة</option>
                                                 <option value="جاري التنفيذ">جاري التنفيذ</option>
                                                 <option value="مكتمل">مكتمل</option>
+                                                <option value="مرفوض">مرفوض</option>
                                             </select>
                                         </td>
                                         <td className="p-3.5 text-center font-bold text-xs text-slate-700">
