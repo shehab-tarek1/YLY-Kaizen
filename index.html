@@ -2,66 +2,112 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>كايزن YLY</title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
+                        slideUp: { '0%': { opacity: 0, transform: 'translateY(10px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+                        popIn: { '0%': { opacity: 0, transform: 'scale(0.92) translateX(-50%)' }, '100%': { opacity: 1, transform: 'scale(1) translateX(-50%)' } },
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn .25s ease-out both',
+                        'slide-up': 'slideUp .3s ease-out both',
+                        'pop-in': 'popIn .22s cubic-bezier(.34,1.56,.64,1) both',
+                    }
+                }
+            }
+        }
+    </script>
+
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
+
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
+
     <!-- Firebase Compat (v9) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 
     <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        html { scroll-behavior: smooth; }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+        }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-        .no-tap-highlight { -webkit-tap-highlight-color: transparent; }
 
-        /* طبقة الخلفية الثابتة لمنع الاهتزاز في الموبايل */
+        /* طبقة الخلفية الثابتة لمنع الاهتزاز في الموبايل — تدرج دوائر متوهجة بألوان زرقاء */
         .fixed-bg-layer {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100vw;
-            height: 100vh;
-            background-image: url('https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1785772039/jca5lzhy66teezsgjzvx.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100vw; height: 100vh;
+            background-color: #eef3fb;
+            background-image:
+                radial-gradient(circle at 18% 15%, rgba(191,219,254,0.85) 0%, rgba(191,219,254,0.35) 22%, rgba(191,219,254,0) 45%),
+                radial-gradient(circle at 82% 12%, rgba(147,197,253,0.7) 0%, rgba(147,197,253,0.25) 25%, rgba(147,197,253,0) 48%),
+                radial-gradient(circle at 88% 78%, rgba(30,64,175,0.55) 0%, rgba(30,64,175,0.18) 30%, rgba(30,64,175,0) 55%),
+                radial-gradient(circle at 8% 85%, rgba(0,32,96,0.5) 0%, rgba(0,32,96,0.15) 28%, rgba(0,32,96,0) 55%),
+                radial-gradient(circle at 50% 50%, rgba(219,234,254,0.6) 0%, rgba(219,234,254,0) 60%);
             z-index: -1;
             pointer-events: none;
-            transform: translateZ(0); /* تسريع باستخدام كارت الشاشة */
+            transform: translateZ(0);
             will-change: transform;
+        }
+
+        /* دوّار تحميل بسيط */
+        .spinner {
+            width: 1em; height: 1em;
+            border: 2px solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            animation: spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* حالة تحميل هيكلية (skeleton) */
+        .skeleton {
+            background: linear-gradient(90deg, #eef2f7 25%, #f8fafc 37%, #eef2f7 63%);
+            background-size: 400% 100%;
+            animation: shimmer 1.4s ease infinite;
+        }
+        @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+        button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+            outline: 2px solid #002060;
+            outline-offset: 2px;
         }
     </style>
 </head>
-<body class="bg-slate-100 font-sans text-slate-800 antialiased selection:bg-[#002060] selection:text-white">
+<body class="bg-slate-100 font-sans text-slate-800 antialiased">
     <!-- طبقة الخلفية الثابتة -->
     <div class="fixed-bg-layer"></div>
 
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback } = React;
-        
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
         // --- الأيقونات (خفيفة وسريعة) ---
         const Plus = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
         const Flame = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>;
         const Award = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>;
         const Home = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
         const CheckCircle2 = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
+        const AlertCircle = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
         const Clock = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
         const TrendingUp = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
         const MessageSquare = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
@@ -71,6 +117,7 @@
         const Send = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>;
         const X = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
         const LogOut = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>;
+        const WifiOff = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>;
 
         // --- Firebase ---
         const firebaseConfig = {
@@ -87,48 +134,76 @@
 
         const getAvatar = (name) => `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=002060,E30613`;
 
+        const COMMITTEES = ['لجنة التنظيم', 'لجنة الموارد البشرية (HR)', 'لجنة السوشيال ميديا', 'لجنة العلاقات العامة (PR)', 'إدارة المشروع المركزية'];
+
         function YlyKaizenApp() {
-            const [activeTab, setActiveTab] = useState('home'); 
+            const [activeTab, setActiveTab] = useState('home');
             const [selectedIdeaId, setSelectedIdeaId] = useState(null);
             const [filter, setFilter] = useState('الكل');
             const [toast, setToast] = useState(null);
             const [newComment, setNewComment] = useState("");
-            
+            const [isCommenting, setIsCommenting] = useState(false);
+
             const [ideas, setIdeas] = useState([]);
+            const [ideasLoaded, setIdeasLoaded] = useState(false);
+            const [ideasError, setIdeasError] = useState(false);
             const [newIdea, setNewIdea] = useState({ title: '', problem: '', solution: '', committee: 'لجنة التنظيم' });
-            
+            const [isSubmittingIdea, setIsSubmittingIdea] = useState(false);
+
             const [user, setUser] = useState(null);
+            const [authChecked, setAuthChecked] = useState(false);
             const [isLoginView, setIsLoginView] = useState(true);
             const [authData, setAuthData] = useState({ name: '', phone: '', password: '' });
-            
-            const [viewProfileData, setViewProfileData] = useState(null); 
+            const [authLoading, setAuthLoading] = useState(false);
+            const [authError, setAuthError] = useState('');
+
+            const [viewProfileData, setViewProfileData] = useState(null);
             const [fullScreenImage, setFullScreenImage] = useState(null);
+            const [pendingVotes, setPendingVotes] = useState({});
 
-            const upvotedIdeas = useMemo(() => JSON.parse(localStorage.getItem('upvotedIdeas') || '[]'), [ideas]);
+            const toastTimer = useRef(null);
+
+            const upvotedIdeas = useMemo(() => {
+                try { return JSON.parse(localStorage.getItem('upvotedIdeas') || '[]'); }
+                catch { return []; }
+            }, [ideas]);
 
             useEffect(() => {
-                const unsubscribe = auth.onAuthStateChanged(currentUser => setUser(currentUser));
-                return () => unsubscribe();
-            }, []);
-
-            useEffect(() => {
-                const unsubscribe = db.collection('ideas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
-                    const fetchedIdeas = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data(),
-                        isUpvoted: upvotedIdeas.includes(doc.id)
-                    }));
-                    setIdeas(fetchedIdeas);
+                const unsubscribe = auth.onAuthStateChanged(currentUser => {
+                    setUser(currentUser);
+                    setAuthChecked(true);
                 });
                 return () => unsubscribe();
             }, []);
 
-            const showToast = useCallback((message, type = 'success') => {
-                setToast({ message, type });
-                setTimeout(() => setToast(null), 3000);
+            useEffect(() => {
+                const unsubscribe = db.collection('ideas').orderBy('createdAt', 'desc').onSnapshot(
+                    snapshot => {
+                        const fetchedIdeas = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data(),
+                            isUpvoted: upvotedIdeas.includes(doc.id)
+                        }));
+                        setIdeas(fetchedIdeas);
+                        setIdeasLoaded(true);
+                        setIdeasError(false);
+                    },
+                    err => {
+                        console.error(err);
+                        setIdeasLoaded(true);
+                        setIdeasError(true);
+                    }
+                );
+                return () => unsubscribe();
+                // eslint-disable-next-line react-hooks/exhaustive-deps
             }, []);
 
-            // تحسين أداء حساب النقاط بواسطة useMemo
+            const showToast = useCallback((message, type = 'success') => {
+                if (toastTimer.current) clearTimeout(toastTimer.current);
+                setToast({ message, type });
+                toastTimer.current = setTimeout(() => setToast(null), 3000);
+            }, []);
+
             const topUsers = useMemo(() => {
                 const userStats = {};
                 ideas.forEach(idea => {
@@ -142,119 +217,172 @@
                     }
                     userStats[idea.author].score += 10 + ((idea.upvotes || 0) * 2);
                 });
-
                 return Object.values(userStats)
                     .sort((a, b) => b.score - a.score)
                     .map((usr, index) => ({ ...usr, rank: index + 1 }));
             }, [ideas]);
 
-            // تحسين الفلترة بواسطة useMemo
             const filteredIdeas = useMemo(() => {
                 return ideas.filter(idea => filter === 'الكل' ? true : idea.status === filter);
             }, [ideas, filter]);
 
+            const filterCounts = useMemo(() => {
+                const counts = { 'الكل': ideas.length, 'قيد المراجعة': 0, 'جاري التنفيذ': 0, 'مكتمل': 0 };
+                ideas.forEach(i => { if (counts[i.status] !== undefined) counts[i.status]++; });
+                return counts;
+            }, [ideas]);
+
             const handleAuth = async (e) => {
                 e.preventDefault();
+                setAuthError('');
                 let phone = authData.phone.trim();
                 if (phone.startsWith('0')) phone = phone.substring(1);
-                
+
                 if (phone.length !== 10) {
-                    showToast('رقم الهاتف يجب أن يتكون من 10 أرقام (بدون الصفر)', 'error');
+                    setAuthError('رقم الهاتف يجب أن يتكون من 10 أرقام (بدون الصفر)');
+                    return;
+                }
+                if (authData.password.length < 6) {
+                    setAuthError('كلمة المرور يجب ألا تقل عن 6 أحرف');
+                    return;
+                }
+                if (!isLoginView && authData.name.trim().length < 3) {
+                    setAuthError('الرجاء كتابة اسمك الرباعي كاملاً');
                     return;
                 }
 
                 const fakeEmail = `${phone}@yly.com`;
-
+                setAuthLoading(true);
                 try {
                     if (isLoginView) {
                         await auth.signInWithEmailAndPassword(fakeEmail, authData.password);
                         showToast('تم تسجيل الدخول بنجاح!');
                     } else {
-                        if(authData.name.trim().length < 3) {
-                            showToast('الرجاء كتابة اسمك الحقيقي', 'error');
-                            return;
-                        }
                         const res = await auth.createUserWithEmailAndPassword(fakeEmail, authData.password);
-                        await res.user.updateProfile({ displayName: authData.name });
+                        await res.user.updateProfile({ displayName: authData.name.trim() });
+                        // فرض تحديث حالة المستخدم محلياً فوراً باسمه الجديد
+                        setUser({ ...res.user, displayName: authData.name.trim() });
                         showToast('تم إنشاء الحساب بنجاح!');
                     }
                     setActiveTab('home');
                     setAuthData({ name: '', phone: '', password: '' });
                 } catch (error) {
                     if (error.code === 'auth/email-already-in-use') {
-                        showToast('رقم الهاتف مسجل بالفعل، قم بتسجيل الدخول', 'error');
-                    } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-                        showToast('رقم الهاتف أو كلمة المرور غير صحيحة.', 'error');
+                        setAuthError('رقم الهاتف مسجل بالفعل، قم بتسجيل الدخول بدلاً من إنشاء حساب.');
+                    } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                        setAuthError('رقم الهاتف أو كلمة المرور غير صحيحة.');
+                    } else if (error.code === 'auth/network-request-failed') {
+                        setAuthError('تعذر الاتصال بالإنترنت، تحقق من اتصالك وحاول مرة أخرى.');
                     } else {
-                        showToast('حدث خطأ، يرجى المحاولة لاحقاً.', 'error');
+                        setAuthError('حدث خطأ غير متوقع، برجاء المحاولة لاحقاً.');
                     }
+                } finally {
+                    setAuthLoading(false);
                 }
             };
 
             const requireAuth = (nextTab) => {
                 if (user) setActiveTab(nextTab);
-                else setActiveTab('auth');
+                else { setAuthError(''); setActiveTab('auth'); }
             };
 
-            const handleUpvote = (id, e) => {
-                if(e) e.stopPropagation(); 
-                if (!user) { showToast('يجب تسجيل الدخول للتصويت'); setActiveTab('auth'); return; }
-                
+            const handleUpvote = async (id, e) => {
+                if (e) e.stopPropagation();
+                if (!user) { showToast('يجب تسجيل الدخول للتصويت', 'info'); setActiveTab('auth'); return; }
+                if (pendingVotes[id]) return; // امنع الضغط المزدوج السريع
+
                 const idea = ideas.find(i => i.id === id);
+                if (!idea) return;
+                const wasUpvoted = idea.isUpvoted;
+                setPendingVotes(p => ({ ...p, [id]: true }));
+
                 let newUpvotedList = [...upvotedIdeas];
-                
-                if (idea.isUpvoted) {
-                    db.collection('ideas').doc(id).update({ upvotes: idea.upvotes - 1 });
-                    newUpvotedList = newUpvotedList.filter(i => i !== id);
-                } else {
-                    db.collection('ideas').doc(id).update({ upvotes: idea.upvotes + 1 });
-                    newUpvotedList.push(id);
+                try {
+                    if (wasUpvoted) {
+                        await db.collection('ideas').doc(id).update({ upvotes: firebase.firestore.FieldValue.increment(-1) });
+                        newUpvotedList = newUpvotedList.filter(i => i !== id);
+                    } else {
+                        await db.collection('ideas').doc(id).update({ upvotes: firebase.firestore.FieldValue.increment(1) });
+                        newUpvotedList.push(id);
+                    }
+                    localStorage.setItem('upvotedIdeas', JSON.stringify(newUpvotedList));
+                } catch (err) {
+                    console.error(err);
+                    showToast('تعذر تسجيل الدعم، حاول مرة أخرى.', 'error');
+                } finally {
+                    setPendingVotes(p => { const n = { ...p }; delete n[id]; return n; });
                 }
-                localStorage.setItem('upvotedIdeas', JSON.stringify(newUpvotedList));
             };
 
             const handleSubmitIdea = async (e) => {
                 e.preventDefault();
-                if (!newIdea.title || !newIdea.problem) return;
+                if (!newIdea.title.trim() || !newIdea.problem.trim() || !newIdea.solution.trim()) {
+                    showToast('من فضلك اكمل جميع الحقول المطلوبة', 'error');
+                    return;
+                }
                 if (!user) { setActiveTab('auth'); return; }
-                
-                showToast('جاري رفع الفكرة، برجاء الانتظار...', 'info');
+                if (isSubmittingIdea) return;
 
-                await db.collection('ideas').add({
-                    ...newIdea,
-                    status: "قيد المراجعة",
-                    author: user.displayName || "عضو YLY",
-                    avatar: getAvatar(user.displayName || "YLY"),
-                    role: "عضو",
-                    upvotes: 0,
-                    timeAgo: new Date().toLocaleDateString('ar-EG'),
-                    commentsList: [],
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                setNewIdea({ title: '', problem: '', solution: '', committee: 'لجنة التنظيم' });
-                setActiveTab('home');
-                showToast('تم إرسال فكرتك للإدارة بنجاح!');
+                setIsSubmittingIdea(true);
+                try {
+                    await db.collection('ideas').add({
+                        title: newIdea.title.trim(),
+                        problem: newIdea.problem.trim(),
+                        solution: newIdea.solution.trim(),
+                        committee: newIdea.committee,
+                        status: "قيد المراجعة",
+                        author: user.displayName || "عضو YLY",
+                        avatar: getAvatar(user.displayName || "YLY"),
+                        role: "عضو",
+                        upvotes: 0,
+                        timeAgo: new Date().toLocaleDateString('ar-EG'),
+                        commentsList: [],
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    setNewIdea({ title: '', problem: '', solution: '', committee: 'لجنة التنظيم' });
+                    setActiveTab('home');
+                    showToast('تم إرسال فكرتك للإدارة بنجاح!');
+                } catch (err) {
+                    console.error(err);
+                    showToast('تعذر إرسال الفكرة، تحقق من اتصالك وحاول مرة أخرى.', 'error');
+                } finally {
+                    setIsSubmittingIdea(false);
+                }
             };
 
             const handleAddComment = async (ideaId) => {
                 if (!newComment.trim()) return;
                 if (!user) { setActiveTab('auth'); return; }
+                if (isCommenting) return;
 
-                const newCommentObj = { 
-                    id: Date.now(), 
-                    author: user.displayName || "عضو YLY", 
+                const newCommentObj = {
+                    id: Date.now(),
+                    author: user.displayName || "عضو YLY",
                     avatar: getAvatar(user.displayName || "YLY"),
-                    role: "عضو", 
-                    text: newComment, 
+                    role: "عضو",
+                    text: newComment.trim(),
                     time: new Date().toLocaleDateString('ar-EG')
                 };
-                
-                await db.collection('ideas').doc(ideaId).update({
-                    commentsList: firebase.firestore.FieldValue.arrayUnion(newCommentObj)
-                });
-                
-                setNewComment("");
+
+                setIsCommenting(true);
+                try {
+                    await db.collection('ideas').doc(ideaId).update({
+                        commentsList: firebase.firestore.FieldValue.arrayUnion(newCommentObj)
+                    });
+                    setNewComment("");
+                } catch (err) {
+                    console.error(err);
+                    showToast('تعذر إرسال التعليق، حاول مرة أخرى.', 'error');
+                } finally {
+                    setIsCommenting(false);
+                }
+            };
+
+            const handleCommentKeyDown = (e, ideaId) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAddComment(ideaId);
+                }
             };
 
             const openIdeaDetails = (id) => {
@@ -263,7 +391,7 @@
             };
 
             const openProfile = (name, avatar, role, e) => {
-                if(e) e.stopPropagation();
+                if (e) e.stopPropagation();
                 setViewProfileData({ name, avatar: avatar || getAvatar(name), role: role || "عضو" });
                 setActiveTab('profile');
             };
@@ -274,26 +402,42 @@
             const StatusPill = ({ status }) => {
                 const styles = { 'مكتمل': 'bg-emerald-50 text-emerald-700 border-emerald-100', 'جاري التنفيذ': 'bg-blue-50 text-blue-700 border-blue-100', 'قيد المراجعة': 'bg-amber-50 text-amber-700 border-amber-100' };
                 const icons = { 'مكتمل': <CheckCircle2 size={14} />, 'جاري التنفيذ': <TrendingUp size={14} />, 'قيد المراجعة': <Clock size={14} /> };
-                return <span className={`px-3 py-1 text-xs font-bold rounded-full border flex items-center gap-1.5 w-fit shadow-sm ${styles[status]}`}>{icons[status]} {status}</span>;
+                return <span className={`px-3 py-1 text-xs font-bold rounded-full border flex items-center gap-1.5 w-fit shadow-sm ${styles[status] || styles['قيد المراجعة']}`}>{icons[status]} {status}</span>;
             };
+
+            const IdeaCardSkeleton = () => (
+                <div className="bg-white/95 rounded-3xl border border-white/80 shadow-sm overflow-hidden p-5 md:p-7">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-full skeleton"></div>
+                        <div className="flex-1 space-y-2">
+                            <div className="h-3 w-28 rounded skeleton"></div>
+                            <div className="h-2.5 w-20 rounded skeleton"></div>
+                        </div>
+                    </div>
+                    <div className="h-4 w-3/4 rounded skeleton mb-3"></div>
+                    <div className="h-16 rounded-2xl skeleton mb-2"></div>
+                    <div className="h-16 rounded-2xl skeleton"></div>
+                </div>
+            );
 
             return (
                 <div dir="rtl" className="flex h-screen font-sans text-slate-800 overflow-hidden relative">
-                    
+
+                    {/* Toast */}
                     {toast && (
-                        <div className="fixed top-20 md:top-4 left-1/2 -translate-x-1/2 z-[100] bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 animate-in">
-                            <CheckCircle2 className="text-emerald-400" size={18} />
+                        <div role="status" aria-live="polite" className={`fixed top-20 md:top-4 left-1/2 -translate-x-1/2 z-[100] backdrop-blur-md text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-2 animate-pop-in ${toast.type === 'error' ? 'bg-red-600/95' : toast.type === 'info' ? 'bg-slate-700/95' : 'bg-slate-900/90'}`}>
+                            {toast.type === 'error' ? <AlertCircle className="text-red-200 shrink-0" size={18} /> : <CheckCircle2 className="text-emerald-400 shrink-0" size={18} />}
                             <span className="text-sm font-medium">{toast.message}</span>
                         </div>
                     )}
 
                     {/* عارض الصور بكامل الشاشة */}
                     {fullScreenImage && (
-                        <div className="fixed inset-0 bg-black/90 z-[999] flex items-center justify-center animate-in fade-in p-4 backdrop-blur-md">
-                            <button onClick={() => setFullScreenImage(null)} className="absolute top-6 right-6 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors">
+                        <div className="fixed inset-0 bg-black/90 z-[999] flex items-center justify-center animate-fade-in p-4 backdrop-blur-md" onClick={() => setFullScreenImage(null)}>
+                            <button onClick={() => setFullScreenImage(null)} aria-label="إغلاق" className="absolute top-6 right-6 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors">
                                 <X size={28} />
                             </button>
-                            <img src={fullScreenImage} loading="lazy" decoding="async" className="max-w-full max-h-full rounded-2xl shadow-2xl border border-white/10" alt="Full screen view" />
+                            <img src={fullScreenImage} loading="lazy" decoding="async" onClick={(e) => e.stopPropagation()} className="max-w-full max-h-full rounded-2xl shadow-2xl border border-white/10" alt="عرض الصورة بالحجم الكامل" />
                         </div>
                     )}
 
@@ -304,8 +448,8 @@
                             {isMainTab ? (
                                 <div className="flex items-center justify-between w-full">
                                     <div className="flex items-center gap-3">
-                                        <div className="bg-white p-1 rounded-[10px] w-9 h-9 flex items-center justify-center shrink-0 shadow-sm">
-                                            <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" loading="lazy" decoding="async" alt="YLY Logo" className="w-full h-full object-contain" />
+                                        <div className="rounded-full w-9 h-9 flex items-center justify-center shrink-0 shadow-sm overflow-hidden ring-1 ring-white/30">
+                                            <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" loading="lazy" decoding="async" alt="شعار YLY" className="w-full h-full object-cover scale-125" />
                                         </div>
                                         <div className="flex flex-col justify-center">
                                             <span className="font-black text-white text-[15px] leading-tight tracking-wide">كايزن YLY</span>
@@ -315,18 +459,18 @@
                                     <button onClick={() => {
                                         if (user) openProfile(user.displayName || "مستخدم", getAvatar(user.displayName || "مستخدم"), "عضو");
                                         else setActiveTab('auth');
-                                    }} className="w-8 h-8 rounded-full flex items-center justify-center border border-white/20 text-white overflow-hidden shadow-inner">
-                                        {user ? <img src={getAvatar(user.displayName || "مستخدم")} loading="lazy" decoding="async" className="w-full h-full object-cover bg-white" /> : <User size={16} />}
+                                    }} aria-label={user ? "الملف الشخصي" : "تسجيل الدخول"} className="w-8 h-8 rounded-full flex items-center justify-center border border-white/20 text-white overflow-hidden shadow-inner">
+                                        {user ? <img src={getAvatar(user.displayName || "مستخدم")} loading="lazy" decoding="async" className="w-full h-full object-cover bg-white" alt="" /> : <User size={16} />}
                                     </button>
                                 </div>
                             ) : (
                                 <div className="flex items-center w-full gap-3">
-                                    <button onClick={() => setActiveTab('home')} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white active:bg-white/20 transition-colors">
+                                    <button onClick={() => setActiveTab(activeTab === 'idea-details' || activeTab === 'add-idea' || activeTab === 'auth' || activeTab === 'profile' ? 'home' : 'home')} aria-label="رجوع" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white active:bg-white/20 transition-colors">
                                         <ArrowRight size={18} />
                                     </button>
                                     <h2 className="text-white font-bold text-[15px]">
-                                        {activeTab === 'add-idea' ? 'طرح فكرة جديدة' : 
-                                         activeTab === 'auth' ? 'تسجيل الدخول' : 
+                                        {activeTab === 'add-idea' ? 'طرح فكرة جديدة' :
+                                         activeTab === 'auth' ? (isLoginView ? 'تسجيل الدخول' : 'إنشاء حساب') :
                                          activeTab === 'profile' ? 'الملف الشخصي' : 'التفاصيل والنقاش'}
                                     </h2>
                                 </div>
@@ -335,38 +479,57 @@
                     </header>
 
                     <main className={`flex-1 overflow-y-auto scroll-smooth ${isMainTab ? 'pt-16 pb-24 md:pt-0 md:pb-0' : 'pt-16 pb-0 md:pt-0'}`}>
-                        
+
                         {/* --- الواجهة الرئيسية --- */}
                         {activeTab === 'home' && (
                             <div className="max-w-4xl mx-auto p-4 md:p-8 flex flex-col md:gap-8 mt-1 md:mt-0">
-                                <div className="md:hidden mt-1 mb-3">
-                                    <div className="flex items-center bg-slate-200/80 backdrop-blur-md p-1 rounded-xl w-full border border-slate-200/50">
+                                <div className="md:hidden mt-1 mb-3 overflow-x-auto custom-scrollbar">
+                                    <div className="flex items-center bg-slate-200/80 backdrop-blur-md p-1 rounded-xl w-full border border-slate-200/50 min-w-max sm:min-w-0">
                                         {[{id: 'الكل', label: 'الكل'}, {id: 'قيد المراجعة', label: 'مراجعة'}, {id: 'جاري التنفيذ', label: 'تنفيذ'}, {id: 'مكتمل', label: 'مكتمل'}].map(f => (
-                                            <button key={f.id} onClick={() => setFilter(f.id)} className={`flex-1 py-2 rounded-lg text-[11px] sm:text-xs font-bold transition-all text-center ${filter === f.id ? 'bg-white text-[#002060] shadow-sm' : 'text-slate-600'}`}>{f.label}</button>
+                                            <button key={f.id} onClick={() => setFilter(f.id)} className={`flex-1 py-2 px-3 rounded-lg text-[11px] sm:text-xs font-bold transition-all text-center whitespace-nowrap ${filter === f.id ? 'bg-white text-[#002060] shadow-sm' : 'text-slate-600'}`}>
+                                                {f.label}{ideasLoaded ? ` (${filterCounts[f.id] ?? 0})` : ''}
+                                            </button>
                                         ))}
                                     </div>
                                 </div>
 
-                                {filteredIdeas.length === 0 && (
-                                    <div className="text-center py-20 bg-white/95 backdrop-blur-sm rounded-3xl border border-dashed border-slate-300 mx-2 mt-4 shadow-sm">
+                                {/* حالة التحميل */}
+                                {!ideasLoaded && (
+                                    <div className="space-y-4 md:space-y-6" aria-busy="true" aria-label="جاري تحميل الأفكار">
+                                        <IdeaCardSkeleton /><IdeaCardSkeleton />
+                                    </div>
+                                )}
+
+                                {/* حالة خطأ الاتصال */}
+                                {ideasLoaded && ideasError && (
+                                    <div className="text-center py-16 bg-white/95 backdrop-blur-sm rounded-3xl border border-dashed border-red-200 mx-2 mt-4 shadow-sm">
+                                        <WifiOff size={28} className="text-red-400 mx-auto mb-3" />
+                                        <h3 className="text-lg font-bold text-slate-600">تعذر تحميل الأفكار</h3>
+                                        <p className="text-sm text-slate-500 mt-1">تحقق من اتصالك بالإنترنت</p>
+                                        <button onClick={() => window.location.reload()} className="mt-5 bg-[#002060] text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md">إعادة المحاولة</button>
+                                    </div>
+                                )}
+
+                                {ideasLoaded && !ideasError && filteredIdeas.length === 0 && (
+                                    <div className="text-center py-20 bg-white/95 backdrop-blur-sm rounded-3xl border border-dashed border-slate-300 mx-2 mt-4 shadow-sm animate-fade-in">
                                         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                             <MessageSquare size={24} className="text-slate-400" />
                                         </div>
-                                        <h3 className="text-xl font-bold text-slate-500">لا توجد أفكار مطروحة حالياً</h3>
-                                        <p className="text-sm text-slate-500 mt-2">كن أول من يطرح فكرة ويشارك في تطوير الكيان!</p>
-                                        <button onClick={() => requireAuth('add-idea')} className="mt-6 bg-[#002060] text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md">أضف فكرة الآن</button>
+                                        <h3 className="text-xl font-bold text-slate-500">{ideas.length === 0 ? 'لا توجد أفكار مطروحة حالياً' : 'لا توجد أفكار في هذا التصنيف'}</h3>
+                                        <p className="text-sm text-slate-500 mt-2">{ideas.length === 0 ? 'كن أول من يطرح فكرة ويشارك في تطوير الكيان!' : 'جرّب تصنيفاً آخر، أو أضف فكرة جديدة.'}</p>
+                                        <button onClick={() => requireAuth('add-idea')} className="mt-6 bg-[#002060] text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md active:scale-95 transition-transform">أضف فكرة الآن</button>
                                     </div>
                                 )}
 
                                 <div className="space-y-4 md:space-y-6">
-                                    {filteredIdeas.map((idea) => (
-                                        <article key={idea.id} onClick={() => openIdeaDetails(idea.id)} className="bg-white/95 backdrop-blur-sm rounded-3xl border border-white/80 shadow-[0_4px_20px_rgb(0,32,96,0.03)] hover:shadow-[0_8px_30px_rgb(0,32,96,0.08)] transition-all duration-300 overflow-hidden cursor-pointer no-tap-highlight active:scale-[0.99]">
+                                    {filteredIdeas.map((idea, i) => (
+                                        <article key={idea.id} style={{animationDelay: `${Math.min(i,6) * 40}ms`}} onClick={() => openIdeaDetails(idea.id)} className="animate-slide-up bg-white/95 backdrop-blur-sm rounded-3xl border border-white/80 shadow-[0_4px_20px_rgb(0,32,96,0.03)] hover:shadow-[0_8px_30px_rgb(0,32,96,0.08)] transition-all duration-300 overflow-hidden cursor-pointer active:scale-[0.99]">
                                             <div className="p-5 md:p-7 pb-4">
                                                 <div className="flex justify-between items-start mb-4 gap-4">
                                                     <div className="flex items-start gap-3">
                                                         <div onClick={(e) => openProfile(idea.author, idea.avatar, idea.role, e)} className="flex items-center gap-3 hover:bg-slate-50/80 p-1 -m-1 rounded-xl transition-colors">
                                                             <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
-                                                                {idea.avatar ? <img src={idea.avatar} loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <User size={18} className="text-slate-400" />}
+                                                                {idea.avatar ? <img src={idea.avatar} loading="lazy" decoding="async" className="w-full h-full object-cover" alt="" /> : <User size={18} className="text-slate-400" />}
                                                             </div>
                                                             <div>
                                                                 <h3 className="font-bold text-slate-900 flex items-center gap-2 text-[15px]">{idea.author}</h3>
@@ -396,8 +559,8 @@
                                             </div>
 
                                             <div className="px-5 py-3 md:px-7 md:py-4 bg-slate-50/50 border-t border-slate-100/50 flex items-center justify-between">
-                                                <button onClick={(e) => handleUpvote(idea.id, e)} className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm ${idea.isUpvoted ? 'bg-[#002060] text-white shadow-[#002060]/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
-                                                    <Flame size={16} className={idea.isUpvoted ? "text-orange-400" : ""} /> {idea.upvotes} دعم
+                                                <button onClick={(e) => handleUpvote(idea.id, e)} disabled={!!pendingVotes[idea.id]} aria-pressed={idea.isUpvoted} className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm disabled:opacity-60 ${idea.isUpvoted ? 'bg-[#002060] text-white shadow-[#002060]/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
+                                                    {pendingVotes[idea.id] ? <span className="spinner"></span> : <Flame size={16} className={idea.isUpvoted ? "text-orange-400" : ""} />} {idea.upvotes} دعم
                                                 </button>
                                                 <div className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-[#002060] bg-blue-50/50 border border-blue-100 rounded-xl">
                                                     <MessageSquare size={16} /> {idea.commentsList?.length || 0} تعليقات
@@ -413,12 +576,12 @@
                         {activeTab === 'idea-details' && selectedIdea && (
                             <div className="flex flex-col h-full relative">
                                 <div className="flex-1 overflow-y-auto max-w-3xl w-full mx-auto p-4 md:p-8 pb-32">
-                                    <article className="bg-white/95 backdrop-blur-sm rounded-3xl border border-white shadow-[0_4px_20px_rgb(0,32,96,0.03)] mb-6 overflow-hidden">
+                                    <article className="bg-white/95 backdrop-blur-sm rounded-3xl border border-white shadow-[0_4px_20px_rgb(0,32,96,0.03)] mb-6 overflow-hidden animate-fade-in">
                                         <div className="p-5 md:p-7">
                                             <div className="flex justify-between items-start mb-5 gap-4">
                                                 <div onClick={() => openProfile(selectedIdea.author, selectedIdea.avatar, selectedIdea.role)} className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-xl">
                                                     <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
-                                                        {selectedIdea.avatar ? <img src={selectedIdea.avatar} loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <User size={20} className="text-slate-400" />}
+                                                        {selectedIdea.avatar ? <img src={selectedIdea.avatar} loading="lazy" decoding="async" className="w-full h-full object-cover" alt="" /> : <User size={20} className="text-slate-400" />}
                                                     </div>
                                                     <div>
                                                         <h3 className="font-bold text-slate-900 flex items-center gap-2 text-base">{selectedIdea.author}</h3>
@@ -443,9 +606,13 @@
                                                     <p className="text-sm text-slate-700 leading-relaxed font-medium whitespace-pre-wrap">{selectedIdea.solution}</p>
                                                 </div>
                                             </div>
+                                            <button onClick={(e) => handleUpvote(selectedIdea.id, e)} disabled={!!pendingVotes[selectedIdea.id]} className={`mt-5 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all shadow-sm disabled:opacity-60 ${selectedIdea.isUpvoted ? 'bg-[#002060] text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
+                                                {pendingVotes[selectedIdea.id] ? <span className="spinner"></span> : <Flame size={16} className={selectedIdea.isUpvoted ? "text-orange-400" : ""} />}
+                                                {selectedIdea.isUpvoted ? 'أنت تدعم هذه الفكرة' : 'ادعم هذه الفكرة'} · {selectedIdea.upvotes}
+                                            </button>
                                         </div>
                                     </article>
-                                    
+
                                     <div className="mb-4">
                                         <h3 className="text-lg font-black text-[#002060] mb-4 flex items-center gap-2"><MessageSquare size={20} /> النقاش والتعليقات ({selectedIdea.commentsList?.length || 0})</h3>
                                         <div className="space-y-4">
@@ -455,17 +622,17 @@
                                                 </div>
                                             ) : (
                                                 selectedIdea.commentsList.map(comment => (
-                                                    <div key={comment.id} className="flex gap-3 animate-in fade-in slide-in-from-bottom-2">
+                                                    <div key={comment.id} className="flex gap-3 animate-fade-in">
                                                         <div onClick={() => openProfile(comment.author, comment.avatar, comment.role)} className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-sm mt-1 overflow-hidden cursor-pointer">
-                                                            {comment.avatar ? <img src={comment.avatar} loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <User size={16} className="text-slate-400" />}
+                                                            {comment.avatar ? <img src={comment.avatar} loading="lazy" decoding="async" className="w-full h-full object-cover" alt="" /> : <User size={16} className="text-slate-400" />}
                                                         </div>
-                                                        <div className="flex-1">
+                                                        <div className="flex-1 min-w-0">
                                                             <div className="bg-white/95 backdrop-blur-sm p-3.5 rounded-2xl rounded-tr-none shadow-sm border border-slate-100">
                                                                 <div className="flex items-center gap-2 mb-1">
                                                                     <span className="font-bold text-slate-900 text-[13px]">{comment.author}</span>
                                                                     <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 rounded">{comment.role}</span>
                                                                 </div>
-                                                                <p className="text-slate-700 text-sm font-medium leading-relaxed">{comment.text}</p>
+                                                                <p className="text-slate-700 text-sm font-medium leading-relaxed break-words">{comment.text}</p>
                                                             </div>
                                                             <span className="text-[10px] text-slate-400 mr-2 mt-1 block font-medium">{comment.time}</span>
                                                         </div>
@@ -477,10 +644,33 @@
                                 </div>
                                 <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-3 pb-safe shadow-[0_-10px_30px_rgb(0,32,96,0.05)] md:absolute md:rounded-b-2xl z-30">
                                     <div className="max-w-3xl mx-auto flex items-end gap-2 relative">
-                                        <textarea rows={1} value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder={user ? "اكتب تعليقاً أو استفساراً..." : "قم بتسجيل الدخول للتعليق"} disabled={!user} className="flex-1 bg-slate-50 border border-slate-200 rounded-3xl px-4 py-3 text-sm focus:outline-none focus:border-[#002060] focus:bg-white transition-colors resize-none max-h-24 custom-scrollbar shadow-inner disabled:opacity-70" />
-                                        <button onClick={() => user ? handleAddComment(selectedIdea.id) : setActiveTab('auth')} disabled={user && !newComment.trim()} className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all ${(user && newComment.trim()) || !user ? 'bg-[#E30613] text-white shadow-md active:scale-95 cursor-pointer' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}><Send size={18} className="mr-1 transform rotate-180" /></button>
+                                        <textarea
+                                            rows={1}
+                                            value={newComment}
+                                            onChange={(e) => setNewComment(e.target.value)}
+                                            onKeyDown={(e) => handleCommentKeyDown(e, selectedIdea.id)}
+                                            placeholder={user ? "اكتب تعليقاً أو استفساراً... (Enter للإرسال)" : "قم بتسجيل الدخول للتعليق"}
+                                            disabled={!user || isCommenting}
+                                            maxLength={500}
+                                            className="flex-1 bg-slate-50 border border-slate-200 rounded-3xl px-4 py-3 text-sm focus:outline-none focus:border-[#002060] focus:bg-white transition-colors resize-none max-h-24 custom-scrollbar shadow-inner disabled:opacity-70"
+                                        />
+                                        <button
+                                            onClick={() => user ? handleAddComment(selectedIdea.id) : setActiveTab('auth')}
+                                            disabled={(user && (!newComment.trim() || isCommenting))}
+                                            aria-label="إرسال التعليق"
+                                            className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all ${(user && newComment.trim() && !isCommenting) || !user ? 'bg-[#E30613] text-white shadow-md active:scale-95 cursor-pointer' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                                        >
+                                            {isCommenting ? <span className="spinner"></span> : <Send size={18} className="mr-1 transform rotate-180" />}
+                                        </button>
                                     </div>
                                 </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'idea-details' && !selectedIdea && ideasLoaded && (
+                            <div className="text-center py-24 px-4">
+                                <p className="text-slate-500 font-bold mb-4">لم يتم العثور على هذه الفكرة، ربما تم حذفها.</p>
+                                <button onClick={() => setActiveTab('home')} className="bg-[#002060] text-white px-6 py-2.5 rounded-xl font-bold text-sm">العودة للرئيسية</button>
                             </div>
                         )}
 
@@ -492,26 +682,29 @@
                                     <form onSubmit={handleSubmitIdea} className="space-y-6">
                                         <div className="space-y-2">
                                             <label className="text-sm font-bold text-slate-800 ml-1">عنوان الفكرة المبتكرة <span className="text-red-500">*</span></label>
-                                            <input type="text" required value={newIdea.title} onChange={(e) => setNewIdea({...newIdea, title: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#002060] outline-none bg-slate-50/50 text-sm font-medium" placeholder="اكتب عنواناً مختصراً يعبر عن الفكرة..." />
+                                            <input type="text" required maxLength={100} value={newIdea.title} onChange={(e) => setNewIdea({...newIdea, title: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#002060] outline-none bg-slate-50/50 text-sm font-medium transition-colors" placeholder="اكتب عنواناً مختصراً يعبر عن الفكرة..." />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-bold text-slate-800 ml-1">اللجنة المعنية <span className="text-red-500">*</span></label>
                                             <div className="relative">
-                                                <select value={newIdea.committee} onChange={(e) => setNewIdea({...newIdea, committee: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#002060] outline-none bg-slate-50/50 text-sm font-bold appearance-none text-slate-700">
-                                                    <option>لجنة التنظيم</option><option>لجنة الموارد البشرية (HR)</option><option>لجنة السوشيال ميديا</option><option>لجنة العلاقات العامة (PR)</option><option>إدارة المشروع المركزية</option>
+                                                <select value={newIdea.committee} onChange={(e) => setNewIdea({...newIdea, committee: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#002060] outline-none bg-slate-50/50 text-sm font-bold appearance-none text-slate-700 transition-colors">
+                                                    {COMMITTEES.map(c => <option key={c} value={c}>{c}</option>)}
                                                 </select>
                                                 <ChevronDown size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-bold text-slate-800 flex items-center gap-2 ml-1"> ما هو التحدي أو المشكلة الحالية؟ <span className="text-red-500">*</span></label>
-                                            <textarea required rows="3" value={newIdea.problem} onChange={(e) => setNewIdea({...newIdea, problem: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-red-100 focus:border-red-500 outline-none bg-red-50/30 text-sm font-medium resize-none" placeholder="اشرح الهدر، الوقت الضائع..."></textarea>
+                                            <textarea required rows="3" maxLength={600} value={newIdea.problem} onChange={(e) => setNewIdea({...newIdea, problem: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-red-100 focus:border-red-500 outline-none bg-red-50/30 text-sm font-medium resize-none transition-colors" placeholder="اشرح الهدر، الوقت الضائع..."></textarea>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-bold text-slate-800 flex items-center gap-2 ml-1"> ما هو حلك المقترح (كايزن)؟ <span className="text-red-500">*</span></label>
-                                            <textarea required rows="4" value={newIdea.solution} onChange={(e) => setNewIdea({...newIdea, solution: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-blue-100 focus:border-[#002060] outline-none bg-[#002060]/5 text-sm font-medium resize-none" placeholder="كيف نحل هذه المشكلة بطريقة ذكية..."></textarea>
+                                            <textarea required rows="4" maxLength={800} value={newIdea.solution} onChange={(e) => setNewIdea({...newIdea, solution: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-blue-100 focus:border-[#002060] outline-none bg-[#002060]/5 text-sm font-medium resize-none transition-colors" placeholder="كيف نحل هذه المشكلة بطريقة ذكية..."></textarea>
                                         </div>
-                                        <button type="submit" className="w-full bg-[#002060] hover:bg-blue-900 text-white py-4 rounded-2xl font-bold shadow-[0_8px_20px_rgb(0,32,96,0.2)] mt-4">إرسال الفكرة للمراجعة</button>
+                                        <button type="submit" disabled={isSubmittingIdea} className="w-full bg-[#002060] hover:bg-blue-900 text-white py-4 rounded-2xl font-bold shadow-[0_8px_20px_rgb(0,32,96,0.2)] mt-4 flex items-center justify-center gap-2 disabled:opacity-70 transition-all active:scale-[0.99]">
+                                            {isSubmittingIdea && <span className="spinner"></span>}
+                                            {isSubmittingIdea ? 'جاري الإرسال...' : 'إرسال الفكرة للمراجعة'}
+                                        </button>
                                     </form>
                                 </div>
                             </div>
@@ -520,18 +713,18 @@
                         {/* --- صفحة البروفايل --- */}
                         {activeTab === 'profile' && viewProfileData && (
                             <div className="max-w-2xl mx-auto p-4 md:p-8">
-                                <div className="bg-white/95 backdrop-blur-sm rounded-[2rem] p-8 text-center shadow-[0_8px_30px_rgb(0,32,96,0.04)] border border-white mt-10 relative">
+                                <div className="bg-white/95 backdrop-blur-sm rounded-[2rem] p-8 text-center shadow-[0_8px_30px_rgb(0,32,96,0.04)] border border-white mt-10 relative animate-fade-in">
                                     {user && user.displayName === viewProfileData.name && (
-                                        <button onClick={() => { auth.signOut(); setActiveTab('home'); }} className="absolute top-4 left-4 w-10 h-10 bg-slate-50 text-slate-400 hover:text-red-500 rounded-full flex items-center justify-center transition-colors">
+                                        <button onClick={() => { auth.signOut(); setActiveTab('home'); showToast('تم تسجيل الخروج'); }} aria-label="تسجيل الخروج" className="absolute top-4 left-4 w-10 h-10 bg-slate-50 text-slate-400 hover:text-red-500 rounded-full flex items-center justify-center transition-colors">
                                             <LogOut size={18} />
                                         </button>
                                     )}
                                     <div className="w-28 h-28 mx-auto -mt-20 mb-4 rounded-full border-4 border-white shadow-xl overflow-hidden bg-slate-100 cursor-pointer active:scale-95 transition-transform" onClick={() => setFullScreenImage(viewProfileData.avatar)}>
-                                        <img src={viewProfileData.avatar} loading="lazy" decoding="async" className="w-full h-full object-cover" alt="Profile" />
+                                        <img src={viewProfileData.avatar} loading="lazy" decoding="async" className="w-full h-full object-cover" alt={`صورة ${viewProfileData.name}`} />
                                     </div>
                                     <h2 className="text-2xl font-black text-[#002060] mb-1">{viewProfileData.name}</h2>
                                     <span className="inline-block px-3 py-1 bg-red-50 text-[#E30613] text-xs font-bold rounded-lg border border-red-100 mb-6">{viewProfileData.role}</span>
-                                    
+
                                     <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-6">
                                         <div className="bg-slate-50/80 p-4 rounded-2xl">
                                             <h4 className="text-sm text-slate-500 font-bold mb-1">الأفكار المطروحة</h4>
@@ -539,7 +732,7 @@
                                         </div>
                                         <div className="bg-orange-50/80 p-4 rounded-2xl">
                                             <h4 className="text-sm text-orange-600/70 font-bold mb-1">إجمالي الدعم</h4>
-                                            <p className="text-2xl font-black text-orange-500">{ideas.filter(i => i.author === viewProfileData.name).reduce((sum, i) => sum + i.upvotes, 0)}</p>
+                                            <p className="text-2xl font-black text-orange-500">{ideas.filter(i => i.author === viewProfileData.name).reduce((sum, i) => sum + (i.upvotes || 0), 0)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -555,7 +748,9 @@
                                     <p className="text-blue-200 font-medium text-sm relative z-10">الأعضاء الأكثر تأثيراً في الكيان (محدث تلقائياً)</p>
                                 </div>
 
-                                {topUsers.length === 0 ? (
+                                {!ideasLoaded ? (
+                                    <div className="space-y-2">{[1,2,3].map(n => <div key={n} className="h-16 rounded-2xl skeleton"></div>)}</div>
+                                ) : topUsers.length === 0 ? (
                                     <div className="text-center py-10 bg-white/95 backdrop-blur-sm rounded-3xl border border-dashed border-slate-300">
                                         <p className="text-slate-500 font-medium text-sm">لا يوجد أبطال حتى الآن. اطرح فكرة لتكون الأول!</p>
                                     </div>
@@ -564,16 +759,16 @@
                                         {topUsers.map((usr, idx) => (
                                             <div key={usr.name} onClick={() => openProfile(usr.name, usr.avatar, usr.role)} className={`flex items-center p-3 mb-2 rounded-2xl cursor-pointer transition-colors ${idx === 0 ? 'bg-gradient-to-l from-amber-50/60 to-transparent border border-amber-100/50' : 'hover:bg-slate-50/80'}`}>
                                                 <div className="w-10 text-center font-black text-xl">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}</div>
-                                                <div className="flex-1 flex items-center gap-3 px-2">
+                                                <div className="flex-1 flex items-center gap-3 px-2 min-w-0">
                                                     <div className="w-10 h-10 bg-slate-100 rounded-full border-2 border-white overflow-hidden shrink-0">
-                                                        <img src={usr.avatar} loading="lazy" decoding="async" alt="avatar" className="w-full h-full object-cover" />
+                                                        <img src={usr.avatar} loading="lazy" decoding="async" alt="" className="w-full h-full object-cover" />
                                                     </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-slate-900">{usr.name}</h4>
+                                                    <div className="min-w-0">
+                                                        <h4 className="font-bold text-slate-900 truncate">{usr.name}</h4>
                                                         <p className="text-[10px] font-bold text-[#E30613]">{usr.role}</p>
                                                     </div>
                                                 </div>
-                                                <div className="text-left pl-1">
+                                                <div className="text-left pl-1 shrink-0">
                                                     <div className="bg-slate-50 text-slate-700 px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 border border-slate-100">
                                                         <Flame size={14} className={idx < 3 ? "text-orange-500" : "text-slate-400"} /> {usr.score}
                                                     </div>
@@ -597,31 +792,38 @@
                                     <h2 className="text-2xl font-black text-[#002060] text-center mb-2">
                                         {isLoginView ? 'تسجيل الدخول' : 'انضمام كعضو جديد'}
                                     </h2>
-                                    <p className="text-center text-sm text-slate-500 mb-8 font-medium">
+                                    <p className="text-center text-sm text-slate-500 mb-6 font-medium">
                                         {isLoginView ? 'مرحباً بعودتك إلى كايزن YLY' : 'شارك أفكارك وطور الكيان معنا'}
                                     </p>
 
+                                    {authError && (
+                                        <div role="alert" className="bg-red-50 border border-red-100 text-red-600 text-sm font-bold rounded-2xl p-3 mb-4 flex items-start gap-2 animate-fade-in">
+                                            <AlertCircle size={16} className="shrink-0 mt-0.5" /><span>{authError}</span>
+                                        </div>
+                                    )}
+
                                     <form onSubmit={handleAuth} className="space-y-4">
                                         {!isLoginView && (
-                                            <input type="text" placeholder="الاسم الرباعي (سيظهر للأعضاء)" value={authData.name} onChange={(e) => setAuthData({...authData, name: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#002060] outline-none bg-slate-50/50 text-sm font-bold" required />
+                                            <input type="text" placeholder="الاسم الرباعي (سيظهر للأعضاء)" value={authData.name} onChange={(e) => setAuthData({...authData, name: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#002060] outline-none bg-slate-50/50 text-sm font-bold transition-colors" required />
                                         )}
-                                        
+
                                         <div className="flex items-stretch w-full rounded-2xl border border-slate-200 focus-within:border-[#002060] focus-within:ring-1 focus-within:ring-[#002060] transition-all bg-slate-50/50 overflow-hidden shadow-inner shadow-slate-100/50">
-                                            <input type="tel" placeholder="رقم الهاتف (بدون 0)" value={authData.phone} onChange={(e) => setAuthData({...authData, phone: e.target.value.replace(/\D/g, '').slice(0,10)})} className="flex-1 px-5 py-4 outline-none bg-transparent text-sm font-bold text-left" dir="ltr" required />
+                                            <input type="tel" inputMode="numeric" placeholder="رقم الهاتف (بدون 0)" value={authData.phone} onChange={(e) => setAuthData({...authData, phone: e.target.value.replace(/\D/g, '').slice(0,10)})} className="flex-1 px-5 py-4 outline-none bg-transparent text-sm font-bold text-left" dir="ltr" required />
                                             <div className="flex items-center justify-center px-4 bg-slate-100/80 border-r border-slate-200 text-slate-500 font-bold text-sm" dir="ltr">
                                                 +20
                                             </div>
                                         </div>
 
-                                        <input type="password" placeholder="كلمة المرور" value={authData.password} onChange={(e) => setAuthData({...authData, password: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#002060] outline-none bg-slate-50/50 text-sm font-bold" required />
-                                        
-                                        <button type="submit" className="w-full bg-[#E30613] hover:bg-red-700 text-white py-4 rounded-2xl font-bold transition-all shadow-[0_8px_20px_rgb(227,6,19,0.2)] mt-2">
-                                            {isLoginView ? 'دخول' : 'إنشاء حساب'}
+                                        <input type="password" placeholder="كلمة المرور (٦ أحرف على الأقل)" value={authData.password} onChange={(e) => setAuthData({...authData, password: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#002060] outline-none bg-slate-50/50 text-sm font-bold transition-colors" required minLength={6} />
+
+                                        <button type="submit" disabled={authLoading} className="w-full bg-[#E30613] hover:bg-red-700 text-white py-4 rounded-2xl font-bold transition-all shadow-[0_8px_20px_rgb(227,6,19,0.2)] mt-2 flex items-center justify-center gap-2 disabled:opacity-70 active:scale-[0.99]">
+                                            {authLoading && <span className="spinner"></span>}
+                                            {authLoading ? 'برجاء الانتظار...' : (isLoginView ? 'دخول' : 'إنشاء حساب')}
                                         </button>
                                     </form>
 
                                     <div className="mt-6 text-center border-t border-slate-100 pt-6">
-                                        <button onClick={() => setIsLoginView(!isLoginView)} className="text-sm font-bold text-slate-500 hover:text-[#E30613] transition-colors">
+                                        <button onClick={() => { setIsLoginView(!isLoginView); setAuthError(''); }} className="text-sm font-bold text-slate-500 hover:text-[#E30613] transition-colors">
                                             {isLoginView ? 'ليس لديك حساب؟ إنشاء حساب جديد' : 'لديك حساب بالفعل؟ تسجيل الدخول'}
                                         </button>
                                     </div>
@@ -638,7 +840,7 @@
                                 <span className="text-[10px] font-bold mt-1">الرئيسية</span>
                             </button>
                             <div className="relative -top-6">
-                                <button onClick={() => requireAuth('add-idea')} className="bg-[#E30613] text-white w-14 h-14 rounded-full flex items-center justify-center shadow-[0_8px_20px_rgb(227,6,19,0.3)] border-[3px] border-[#F0F5FA] active:scale-90"><Plus size={28} /></button>
+                                <button onClick={() => requireAuth('add-idea')} aria-label="طرح فكرة جديدة" className="bg-[#E30613] text-white w-14 h-14 rounded-full flex items-center justify-center shadow-[0_8px_20px_rgb(227,6,19,0.3)] border-[3px] border-[#F0F5FA] active:scale-90 transition-transform"><Plus size={28} /></button>
                             </div>
                             <button onClick={() => setActiveTab('leaderboard')} className={`flex flex-col items-center justify-center w-20 h-full transition-colors ${activeTab === 'leaderboard' ? 'text-[#002060]' : 'text-slate-400'}`}>
                                 <Award size={24} />
