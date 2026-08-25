@@ -43,7 +43,8 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        const ADMIN_UID = "d4OliyrrEZbJiw1HkXUJ83rGzhq1";
+        // المفتاح المطابق لقواعد حماية Firestore الخاصة بك
+        const ADMIN_UID = "F1qZJunfEsdKP1SZyDcEDRjrzMM2";
 
         function AdminPanel() {
             const [authChecked, setAuthChecked] = useState(false);
@@ -200,7 +201,7 @@
                         </div>
                     </header>
 
-                    {/* شريط البحث والفلترة مع إضافة مرفوض */}
+                    {/* شريط البحث والفلترة */}
                     <div className="flex flex-col sm:flex-row gap-2.5 mb-4">
                         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث بعنوان الفكرة أو اسم صاحبها..." className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200/80 bg-white text-xs font-bold transition-colors" />
                         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3.5 py-2.5 rounded-xl border border-slate-200/80 bg-white text-xs font-bold text-slate-700">
@@ -212,7 +213,7 @@
                         </select>
                     </div>
 
-                    {/* عرض البطاقات في الهاتف */}
+                    {/* عرض البطاقات في الموبايل */}
                     <div className="block md:hidden space-y-3">
                         {!ideasLoaded && [1,2,3].map(n => (
                             <div key={n} className="bg-white p-4 rounded-xl border border-slate-200/70 space-y-2">
@@ -265,7 +266,7 @@
                         ))}
                     </div>
 
-                    {/* عرض الجدول في اللابتوب */}
+                    {/* عرض الجدول في اللابتوب والكمبيوتر */}
                     <div className="hidden md:block bg-white rounded-2xl shadow-xs overflow-hidden border border-slate-200/70">
                         <table className="w-full text-right whitespace-nowrap">
                             <thead className="bg-slate-50 border-b border-slate-100">
