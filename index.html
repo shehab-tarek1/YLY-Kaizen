@@ -49,18 +49,18 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 
-        /* طبقة الخلفية الثابتة لمنع الاهتزاز في الموبايل — تدرج دوائر متوهجة بألوان زرقاء */
+        /* طبقة الخلفية الثابتة لمنع الاهتزاز في الموبايل — تدرج دوائر متوهجة بدرجات أزرق غامق فاخرة */
         .fixed-bg-layer {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             width: 100vw; height: 100vh;
-            background-color: #eef3fb;
+            background-color: #f2f5fb;
             background-image:
-                radial-gradient(circle at 18% 15%, rgba(191,219,254,0.85) 0%, rgba(191,219,254,0.35) 22%, rgba(191,219,254,0) 45%),
-                radial-gradient(circle at 82% 12%, rgba(147,197,253,0.7) 0%, rgba(147,197,253,0.25) 25%, rgba(147,197,253,0) 48%),
-                radial-gradient(circle at 88% 78%, rgba(30,64,175,0.55) 0%, rgba(30,64,175,0.18) 30%, rgba(30,64,175,0) 55%),
-                radial-gradient(circle at 8% 85%, rgba(0,32,96,0.5) 0%, rgba(0,32,96,0.15) 28%, rgba(0,32,96,0) 55%),
-                radial-gradient(circle at 50% 50%, rgba(219,234,254,0.6) 0%, rgba(219,234,254,0) 60%);
+                radial-gradient(circle at 10% 8%,  rgba(0,32,96,0.30)  0%, rgba(0,32,96,0.10)  26%, rgba(0,32,96,0) 48%),
+                radial-gradient(circle at 92% 6%,   rgba(30,64,175,0.26) 0%, rgba(30,64,175,0.08) 24%, rgba(30,64,175,0) 46%),
+                radial-gradient(circle at 90% 90%,  rgba(0,32,96,0.34)  0%, rgba(0,32,96,0.12)  28%, rgba(0,32,96,0) 52%),
+                radial-gradient(circle at 6% 92%,   rgba(23,58,140,0.30) 0%, rgba(23,58,140,0.09) 26%, rgba(23,58,140,0) 50%),
+                radial-gradient(circle at 50% 48%,  rgba(59,101,224,0.10) 0%, rgba(59,101,224,0) 60%);
             z-index: -1;
             pointer-events: none;
             transform: translateZ(0);
@@ -478,13 +478,13 @@
                         </div>
                     </header>
 
-                    <main className={`flex-1 overflow-y-auto scroll-smooth ${isMainTab ? 'pt-16 pb-24 md:pt-0 md:pb-0' : 'pt-16 pb-0 md:pt-0'}`}>
+                    <main className={`flex-1 overflow-y-auto scroll-smooth ${isMainTab ? 'pt-16 pb-36 md:pt-0 md:pb-0' : 'pt-16 pb-0 md:pt-0'}`}>
 
                         {/* --- الواجهة الرئيسية --- */}
                         {activeTab === 'home' && (
                             <div className="max-w-4xl mx-auto p-4 md:p-8 flex flex-col md:gap-8 mt-1 md:mt-0">
                                 <div className="md:hidden mt-1 mb-3 overflow-x-auto custom-scrollbar">
-                                    <div className="flex items-center bg-slate-200/80 backdrop-blur-md p-1 rounded-xl w-full border border-slate-200/50 min-w-max sm:min-w-0">
+                                    <div className="flex items-center bg-slate-200/90 p-1 rounded-xl w-full border border-slate-200/50 min-w-max sm:min-w-0">
                                         {[{id: 'الكل', label: 'الكل'}, {id: 'قيد المراجعة', label: 'مراجعة'}, {id: 'جاري التنفيذ', label: 'تنفيذ'}, {id: 'مكتمل', label: 'مكتمل'}].map(f => (
                                             <button key={f.id} onClick={() => setFilter(f.id)} className={`flex-1 py-2 px-3 rounded-lg text-[11px] sm:text-xs font-bold transition-all text-center whitespace-nowrap ${filter === f.id ? 'bg-white text-[#002060] shadow-sm' : 'text-slate-600'}`}>
                                                 {f.label}{ideasLoaded ? ` (${filterCounts[f.id] ?? 0})` : ''}
@@ -502,7 +502,7 @@
 
                                 {/* حالة خطأ الاتصال */}
                                 {ideasLoaded && ideasError && (
-                                    <div className="text-center py-16 bg-white/95 backdrop-blur-sm rounded-3xl border border-dashed border-red-200 mx-2 mt-4 shadow-sm">
+                                    <div className="text-center py-16 bg-white/95 rounded-3xl border border-dashed border-red-200 mx-2 mt-4 shadow-sm">
                                         <WifiOff size={28} className="text-red-400 mx-auto mb-3" />
                                         <h3 className="text-lg font-bold text-slate-600">تعذر تحميل الأفكار</h3>
                                         <p className="text-sm text-slate-500 mt-1">تحقق من اتصالك بالإنترنت</p>
@@ -511,7 +511,7 @@
                                 )}
 
                                 {ideasLoaded && !ideasError && filteredIdeas.length === 0 && (
-                                    <div className="text-center py-20 bg-white/95 backdrop-blur-sm rounded-3xl border border-dashed border-slate-300 mx-2 mt-4 shadow-sm animate-fade-in">
+                                    <div className="text-center py-20 bg-white/95 rounded-3xl border border-dashed border-slate-300 mx-2 mt-4 shadow-sm animate-fade-in">
                                         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                             <MessageSquare size={24} className="text-slate-400" />
                                         </div>
@@ -523,7 +523,7 @@
 
                                 <div className="space-y-4 md:space-y-6">
                                     {filteredIdeas.map((idea, i) => (
-                                        <article key={idea.id} style={{animationDelay: `${Math.min(i,6) * 40}ms`}} onClick={() => openIdeaDetails(idea.id)} className="animate-slide-up bg-white/95 backdrop-blur-sm rounded-3xl border border-white/80 shadow-[0_4px_20px_rgb(0,32,96,0.03)] hover:shadow-[0_8px_30px_rgb(0,32,96,0.08)] transition-all duration-300 overflow-hidden cursor-pointer active:scale-[0.99]">
+                                        <article key={idea.id} style={{animationDelay: `${Math.min(i,6) * 40}ms`}} onClick={() => openIdeaDetails(idea.id)} className="animate-slide-up bg-white/95 rounded-3xl border border-white/80 shadow-[0_4px_20px_rgb(0,32,96,0.03)] hover:shadow-[0_8px_30px_rgb(0,32,96,0.08)] transition-all duration-300 overflow-hidden cursor-pointer active:scale-[0.99]">
                                             <div className="p-5 md:p-7 pb-4">
                                                 <div className="flex justify-between items-start mb-4 gap-4">
                                                     <div className="flex items-start gap-3">
@@ -569,6 +569,7 @@
                                         </article>
                                     ))}
                                 </div>
+                                <div className="h-6" aria-hidden="true"></div>
                             </div>
                         )}
 
@@ -576,7 +577,7 @@
                         {activeTab === 'idea-details' && selectedIdea && (
                             <div className="flex flex-col h-full relative">
                                 <div className="flex-1 overflow-y-auto max-w-3xl w-full mx-auto p-4 md:p-8 pb-32">
-                                    <article className="bg-white/95 backdrop-blur-sm rounded-3xl border border-white shadow-[0_4px_20px_rgb(0,32,96,0.03)] mb-6 overflow-hidden animate-fade-in">
+                                    <article className="bg-white/95 rounded-3xl border border-white shadow-[0_4px_20px_rgb(0,32,96,0.03)] mb-6 overflow-hidden animate-fade-in">
                                         <div className="p-5 md:p-7">
                                             <div className="flex justify-between items-start mb-5 gap-4">
                                                 <div onClick={() => openProfile(selectedIdea.author, selectedIdea.avatar, selectedIdea.role)} className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-xl">
@@ -617,7 +618,7 @@
                                         <h3 className="text-lg font-black text-[#002060] mb-4 flex items-center gap-2"><MessageSquare size={20} /> النقاش والتعليقات ({selectedIdea.commentsList?.length || 0})</h3>
                                         <div className="space-y-4">
                                             {(!selectedIdea.commentsList || selectedIdea.commentsList.length === 0) ? (
-                                                <div className="text-center py-10 bg-white/80 backdrop-blur-sm rounded-2xl border border-dashed border-slate-300">
+                                                <div className="text-center py-10 bg-white/80 rounded-2xl border border-dashed border-slate-300">
                                                     <p className="text-slate-500 font-medium text-sm">لا توجد تعليقات حتى الآن. كن أول من يشارك برأيه!</p>
                                                 </div>
                                             ) : (
@@ -627,7 +628,7 @@
                                                             {comment.avatar ? <img src={comment.avatar} loading="lazy" decoding="async" className="w-full h-full object-cover" alt="" /> : <User size={16} className="text-slate-400" />}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <div className="bg-white/95 backdrop-blur-sm p-3.5 rounded-2xl rounded-tr-none shadow-sm border border-slate-100">
+                                                            <div className="bg-white/95 p-3.5 rounded-2xl rounded-tr-none shadow-sm border border-slate-100">
                                                                 <div className="flex items-center gap-2 mb-1">
                                                                     <span className="font-bold text-slate-900 text-[13px]">{comment.author}</span>
                                                                     <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 rounded">{comment.role}</span>
@@ -677,7 +678,7 @@
                         {/* --- صفحة إضافة فكرة --- */}
                         {activeTab === 'add-idea' && (
                             <div className="max-w-2xl mx-auto p-4 md:p-8 min-h-full flex flex-col">
-                                <div className="bg-white/95 backdrop-blur-sm p-5 md:p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,32,96,0.04)] border border-white flex-1 mb-8 mt-4">
+                                <div className="bg-white/95 p-5 md:p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,32,96,0.04)] border border-white flex-1 mb-8 mt-4">
                                     <h2 className="text-2xl font-black text-[#002060] mb-6">طرح فكرة جديدة</h2>
                                     <form onSubmit={handleSubmitIdea} className="space-y-6">
                                         <div className="space-y-2">
@@ -713,7 +714,7 @@
                         {/* --- صفحة البروفايل --- */}
                         {activeTab === 'profile' && viewProfileData && (
                             <div className="max-w-2xl mx-auto p-4 md:p-8">
-                                <div className="bg-white/95 backdrop-blur-sm rounded-[2rem] p-8 text-center shadow-[0_8px_30px_rgb(0,32,96,0.04)] border border-white mt-10 relative animate-fade-in">
+                                <div className="bg-white/95 rounded-[2rem] p-8 text-center shadow-[0_8px_30px_rgb(0,32,96,0.04)] border border-white mt-10 relative animate-fade-in">
                                     {user && user.displayName === viewProfileData.name && (
                                         <button onClick={() => { auth.signOut(); setActiveTab('home'); showToast('تم تسجيل الخروج'); }} aria-label="تسجيل الخروج" className="absolute top-4 left-4 w-10 h-10 bg-slate-50 text-slate-400 hover:text-red-500 rounded-full flex items-center justify-center transition-colors">
                                             <LogOut size={18} />
@@ -742,7 +743,7 @@
                         {/* --- صفحة أبطال الكيان --- */}
                         {activeTab === 'leaderboard' && (
                             <div className="max-w-3xl mx-auto p-4 md:p-8 mt-1 md:mt-0">
-                                <div className="bg-[#002060]/95 backdrop-blur-md rounded-[2rem] p-8 md:p-10 text-center text-white mb-6 shadow-[0_20px_40px_rgb(0,32,96,0.15)] relative overflow-hidden border border-blue-800/50">
+                                <div className="bg-[#002060] rounded-[2rem] p-8 md:p-10 text-center text-white mb-6 shadow-[0_20px_40px_rgb(0,32,96,0.15)] relative overflow-hidden border border-blue-800/50">
                                     <Award size={64} className="mx-auto text-yellow-400 mb-5 drop-shadow-xl relative z-10" />
                                     <h2 className="text-3xl font-black mb-2 relative z-10">أبطال YLY للتطوير</h2>
                                     <p className="text-blue-200 font-medium text-sm relative z-10">الأعضاء الأكثر تأثيراً في الكيان (محدث تلقائياً)</p>
@@ -751,11 +752,11 @@
                                 {!ideasLoaded ? (
                                     <div className="space-y-2">{[1,2,3].map(n => <div key={n} className="h-16 rounded-2xl skeleton"></div>)}</div>
                                 ) : topUsers.length === 0 ? (
-                                    <div className="text-center py-10 bg-white/95 backdrop-blur-sm rounded-3xl border border-dashed border-slate-300">
+                                    <div className="text-center py-10 bg-white/95 rounded-3xl border border-dashed border-slate-300">
                                         <p className="text-slate-500 font-medium text-sm">لا يوجد أبطال حتى الآن. اطرح فكرة لتكون الأول!</p>
                                     </div>
                                 ) : (
-                                    <div className="bg-white/95 backdrop-blur-sm rounded-[2rem] border border-white shadow-[0_8px_30px_rgb(0,32,96,0.04)] overflow-hidden p-2">
+                                    <div className="bg-white/95 rounded-[2rem] border border-white shadow-[0_8px_30px_rgb(0,32,96,0.04)] overflow-hidden p-2">
                                         {topUsers.map((usr, idx) => (
                                             <div key={usr.name} onClick={() => openProfile(usr.name, usr.avatar, usr.role)} className={`flex items-center p-3 mb-2 rounded-2xl cursor-pointer transition-colors ${idx === 0 ? 'bg-gradient-to-l from-amber-50/60 to-transparent border border-amber-100/50' : 'hover:bg-slate-50/80'}`}>
                                                 <div className="w-10 text-center font-black text-xl">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}</div>
@@ -777,13 +778,14 @@
                                         ))}
                                     </div>
                                 )}
+                                <div className="h-6" aria-hidden="true"></div>
                             </div>
                         )}
 
                         {/* --- صفحة Auth --- */}
                         {activeTab === 'auth' && (
                             <div className="max-w-md mx-auto p-4 md:p-8 mt-4">
-                                <div className="bg-white/95 backdrop-blur-sm p-6 md:p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,32,96,0.04)] border border-white">
+                                <div className="bg-white/95 p-6 md:p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,32,96,0.04)] border border-white">
                                     <div className="flex justify-center mb-6">
                                         <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center shadow-inner">
                                             <User size={32} className="text-[#002060]" />
