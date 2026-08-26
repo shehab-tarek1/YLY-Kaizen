@@ -229,7 +229,8 @@
                         userStats[idea.author] = {
                             name: idea.author,
                             avatar: idea.avatar,
-                            committee: idea.committee || 'لجنة التنظيم',
+                            uid: idea.authorUid,
+                            committee: idea.role || 'لجنة التنظيم',
                             score: 0
                         };
                     }
@@ -487,15 +488,16 @@
                 setActiveTab('idea-details');
             };
 
-            const openProfile = (name, avatar, committee, e) => {
+            const openProfile = (name, avatar, committee, uid, e) => {
                 if (e) e.stopPropagation();
                 setIsEditingProfile(false);
                 setViewProfileData({
                     name,
+                    uid,
                     avatar: avatar || getAvatar(name),
                     committee: committee || "عضو",
-                    officialId: (user && user.displayName === name) ? (userProfile?.officialId || '') : '',
-                    phone: (user && user.displayName === name) ? (userProfile?.phone || '') : ''
+                    officialId: (user && uid === user.uid) ? (userProfile?.officialId || '') : '',
+                    phone: (user && uid === user.uid) ? (userProfile?.phone || '') : ''
                 });
                 setActiveTab('profile');
             };
@@ -528,9 +530,9 @@
 
                     {/* Toast Notification */}
                     {toast && (
-                        <div role="status" aria-live="polite" className={`fixed top-16 md:top-5 left-1/2 -translate-x-1/2 z-[100] w-auto max-w-[90vw] whitespace-nowrap backdrop-blur-md text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-pop-in ${toast.type === 'error' ? 'bg-red-600/95' : toast.type === 'info' ? 'bg-slate-800/95' : 'bg-[#002060]/95'}`}>
+                        <div role="status" aria-live="polite" className={`fixed top-16 md:top-5 left-1/2 -translate-x-1/2 z-[100] max-w-[88vw] sm:max-w-sm backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-lg flex items-start gap-2 animate-pop-in ${toast.type === 'error' ? 'bg-red-600/95' : toast.type === 'info' ? 'bg-slate-800/95' : 'bg-[#002060]/95'}`}>
                             {toast.type === 'error' ? <AlertCircle className="text-red-200 shrink-0" size={16} /> : <CheckCircle2 className="text-emerald-400 shrink-0" size={16} />}
-                            <span className="text-xs md:text-sm font-bold tracking-tight">{toast.message}</span>
+                            <span className="text-xs md:text-sm font-bold leading-snug break-words">{toast.message}</span>
                         </div>
                     )}
 
@@ -560,7 +562,7 @@
                                         </div>
                                     </div>
                                     <button onClick={() => {
-                                        if (user) openProfile(user.displayName || "عضو YLY", getAvatar(user.displayName), userProfile?.committee || "عضو");
+                                        if (user) openProfile(user.displayName || "عضو YLY", getAvatar(user.displayName), userProfile?.committee || "عضو", user.uid);
                                         else setActiveTab('auth');
                                     }} aria-label="الحساب" className="w-8 h-8 rounded-full flex items-center justify-center border border-white/30 text-white overflow-hidden bg-white/10">
                                         {user ? <img src={getAvatar(user.displayName)} className="w-full h-full object-cover" alt="" /> : <User size={15} />}
@@ -655,14 +657,14 @@
                                                     
                                                     {/* الهيدر: اليمين صاحب الفكرة واللجنة — اليسار التاريخ فوق الحالة */}
                                                     <div className="flex justify-between items-start mb-2.5 gap-2">
-                                                        <div onClick={(e) => openProfile(idea.author, idea.avatar, idea.committee, e)} className="flex items-center gap-2.5 hover:opacity-85 transition-opacity min-w-0">
+                                                        <div onClick={(e) => openProfile(idea.author, idea.avatar, idea.role, idea.authorUid, e)} className="flex items-center gap-2.5 hover:opacity-85 transition-opacity min-w-0">
                                                             <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
                                                                 <img src={idea.avatar || getAvatar(idea.author)} className="w-full h-full object-cover" alt="" />
                                                             </div>
                                                             <div className="min-w-0">
                                                                 <h3 className="font-bold text-slate-900 text-xs md:text-sm leading-tight truncate">{idea.author}</h3>
                                                                 <span className="text-[9px] font-bold text-[#E30613] bg-red-50/90 px-1.5 py-0.5 rounded border border-red-100/70 inline-block mt-0.5 truncate max-w-full">
-                                                                    اللجنة: {idea.committee}
+                                                                    اللجنة: {idea.role}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -714,14 +716,14 @@
                                 <div className="flex-1 overflow-y-auto pb-28">
                                     <article className="bg-white/95 rounded-2xl border border-slate-200/70 shadow-sm p-4 md:p-6 mb-4 animate-fade-in">
                                         <div className="flex justify-between items-start mb-3 gap-2">
-                                            <div onClick={() => openProfile(selectedIdea.author, selectedIdea.avatar, selectedIdea.committee)} className="flex items-center gap-2.5 cursor-pointer min-w-0">
+                                            <div onClick={() => openProfile(selectedIdea.author, selectedIdea.avatar, selectedIdea.role, selectedIdea.authorUid)} className="flex items-center gap-2.5 cursor-pointer min-w-0">
                                                 <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
                                                     <img src={selectedIdea.avatar || getAvatar(selectedIdea.author)} className="w-full h-full object-cover" alt="" />
                                                 </div>
                                                 <div className="min-w-0">
                                                     <h3 className="font-bold text-slate-900 text-sm truncate">{selectedIdea.author}</h3>
                                                     <span className="text-[10px] font-bold text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-100/70 inline-block mt-0.5 truncate">
-                                                        اللجنة: {selectedIdea.committee}
+                                                        اللجنة: {selectedIdea.role}
                                                     </span>
                                                 </div>
                                             </div>
@@ -772,10 +774,10 @@
                                             ) : (
                                                 selectedIdea.commentsList.map(comment => (
                                                     <div key={comment.id} className="flex gap-2 animate-fade-in">
-                                                        <div onClick={() => openProfile(comment.author, comment.avatar, comment.committee)} className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden cursor-pointer mt-0.5">
+                                                        <div onClick={() => openProfile(comment.author, comment.avatar, comment.committee, comment.authorUid)} className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden cursor-pointer mt-0.5">
                                                             <img src={comment.avatar || getAvatar(comment.author)} className="w-full h-full object-cover" alt="" />
                                                         </div>
-                                                        <div className="flex-1 bg-white/95 p-2.5 md:p-3 rounded-2xl border border-slate-200/70 shadow-xs">
+                                                        <div className="flex-1 bg-white/95 p-2.5 md:p-3 rounded-2xl border border-slate-200/70 shadow-sm">
                                                             <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
                                                                 <div className="flex items-center gap-1.5 min-w-0">
                                                                     <span className="font-bold text-slate-900 text-xs truncate">{comment.author}</span>
@@ -858,7 +860,7 @@
                                 <div className="bg-white/95 rounded-2xl p-5 text-center border border-slate-200/70 shadow-sm mt-8 relative animate-fade-in">
                                     
                                     {/* أزرار الإجراءات الخاصة بصاحب الحساب */}
-                                    {user && (user.displayName === viewProfileData.name || userProfile?.name === viewProfileData.name) && (
+                                    {user && viewProfileData.uid === user.uid && (
                                         <div className="absolute top-3.5 left-3.5 flex items-center gap-1.5">
                                             {!isEditingProfile && (
                                                 <button
@@ -884,14 +886,14 @@
                                     {/* وضع العرض العادي */}
                                     {!isEditingProfile ? (
                                         <>
-                                            <div className="w-20 h-20 mx-auto -mt-13 mb-2.5 rounded-full border-2 border-white shadow-md overflow-hidden bg-slate-100 cursor-pointer active:scale-95 transition-transform" onClick={() => setFullScreenImage(viewProfileData.avatar)}>
+                                            <div className="w-20 h-20 mx-auto -mt-10 mb-2.5 rounded-full border-2 border-white shadow-md overflow-hidden bg-slate-100 cursor-pointer active:scale-95 transition-transform" onClick={() => setFullScreenImage(viewProfileData.avatar)}>
                                                 <img src={viewProfileData.avatar} className="w-full h-full object-cover" alt="" />
                                             </div>
                                             <h2 className="text-base font-black text-[#002060] mb-0.5">{viewProfileData.name}</h2>
                                             <span className="inline-block px-2.5 py-0.5 bg-red-50 text-[#E30613] text-[10px] font-bold rounded-md border border-red-100/70 mb-3">{viewProfileData.committee}</span>
 
                                             {/* إظهار بيانات إضافية للعضو صاحب الحساب */}
-                                            {user && (user.displayName === viewProfileData.name || userProfile?.name === viewProfileData.name) && (
+                                            {user && viewProfileData.uid === user.uid && (
                                                 <div className="bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/60 mb-3 text-right space-y-1.5">
                                                     <div className="flex items-center justify-between text-xs">
                                                         <span className="text-slate-400 font-bold">الرقم الرسمي / الكودي:</span>
@@ -982,9 +984,9 @@
                                         <p className="text-slate-400 font-medium text-xs">لا يوجد أبطال حتى الآن. اطرح فكرة وكن الأول!</p>
                                     </div>
                                 ) : (
-                                    <div className="bg-white/95 rounded-2xl border border-slate-200/70 shadow-xs overflow-hidden p-1.5 space-y-1">
+                                    <div className="bg-white/95 rounded-2xl border border-slate-200/70 shadow-sm overflow-hidden p-1.5 space-y-1">
                                         {topUsers.map((usr, idx) => (
-                                            <div key={usr.name} onClick={() => openProfile(usr.name, usr.avatar, usr.committee)} className={`flex items-center p-2 rounded-xl cursor-pointer transition-colors ${idx === 0 ? 'bg-amber-50/70 border border-amber-200/50' : 'hover:bg-slate-50'}`}>
+                                            <div key={usr.name} onClick={() => openProfile(usr.name, usr.avatar, usr.committee, usr.uid)} className={`flex items-center p-2 rounded-xl cursor-pointer transition-colors ${idx === 0 ? 'bg-amber-50/70 border border-amber-200/50' : 'hover:bg-slate-50'}`}>
                                                 <div className="w-7 text-center font-black text-xs">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}</div>
                                                 <div className="flex-1 flex items-center gap-2 px-1.5 min-w-0">
                                                     <div className="w-8 h-8 bg-slate-100 rounded-full border border-slate-200 overflow-hidden shrink-0">
