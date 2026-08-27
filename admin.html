@@ -3,33 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>إدارة كايزن YLY</title>
+    <title>إدارة كايزن YLY - Kaizen OS</title>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { navy: '#002060', ylyred: '#E30613' },
+                    animation: { 'fade-in': 'fadeIn 0.3s ease-out', 'slide-in': 'slideIn 0.3s ease-out' },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
+                        slideIn: { '0%': { transform: 'translateX(20px)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } }
+                    }
+                }
+            }
+        }
+    </script>
+
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Firebase Auth & Firestore -->
+
+    <!-- Firebase Compat -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
     <style>
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        .spinner { width: 1rem; height: 1rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; display: inline-block; animation: spin .6s linear infinite; }
+        body { background-color: #F0F4F8; font-family: system-ui, -apple-system, sans-serif; }
+        .spinner { width: 1.2rem; height: 1.2rem; border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; display: inline-block; animation: spin .75s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .skeleton { background: linear-gradient(90deg, #edf2f7 25%, #f8fafc 37%, #edf2f7 63%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; }
-        @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
-        input, select, button { outline: none !important; }
-        input:focus-visible, select:focus-visible { border-color: #002060 !important; }
+        /* Custom Scrollbar for Kanban */
+        .kanban-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+        .kanban-scroll::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 4px; }
+        .kanban-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-[#F0F5FA] font-sans text-slate-800 min-h-screen">
+<body class="text-slate-800 antialiased">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
+
+        const Icon = ({ path, size=20, className="" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{ __html: path }} />
+        );
+        const ICONS = {
+            Board: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>',
+            Analytics: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+            Check: '<polyline points="20 6 9 17 4 12"/>',
+            X: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+            TrendingUp: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>'
+        };
 
         const firebaseConfig = {
             apiKey: "AIzaSyA3UqEDpP2Llt7ZkloqmlURGULdKEiWF3o",
@@ -39,290 +69,389 @@
             messagingSenderId: "599868603298",
             appId: "1:599868603298:web:f66010961895c707cb10fb"
         };
-        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // المفتاح المطابق لقواعد حماية Firestore الخاصة بك
-        const ADMIN_UID = "d4OliyrrEZbJiw1HkXUJ83rGzhq1";
+        const COMMITTEES = ['HR', 'PR', 'Media', 'OR', 'Events', 'Logistics', 'Communication', 'Training', 'Other'];
+        
+        // المراحل الحقيقية للكايزن
+        const STAGES = [
+            { id: 'submitted', label: 'مُقدمة', color: 'bg-slate-200' },
+            { id: 'under_review', label: 'مراجعة', color: 'bg-blue-200' },
+            { id: 'approved', label: 'مقبولة', color: 'bg-amber-200' },
+            { id: 'experiment', label: 'جاري التجربة', color: 'bg-orange-200' },
+            { id: 'measuring', label: 'قياس', color: 'bg-teal-200' },
+            { id: 'implemented', label: 'تم التنفيذ', color: 'bg-emerald-300' },
+            { id: 'standardized', label: 'تعميم (Standard)', color: 'bg-purple-300' },
+            { id: 'rejected', label: 'مرفوضة', color: 'bg-red-200' }
+        ];
 
-        function AdminPanel() {
-            const [authChecked, setAuthChecked] = useState(false);
+        function AdminApp() {
             const [user, setUser] = useState(null);
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
-            const [loginLoading, setLoginLoading] = useState(false);
+            const [loading, setLoading] = useState(true);
+            const [activeTab, setActiveTab] = useState('kanban'); // kanban, analytics
             const [ideas, setIdeas] = useState([]);
-            const [ideasLoaded, setIdeasLoaded] = useState(false);
-            const [error, setError] = useState('');
-            const [busyId, setBusyId] = useState(null);
-            const [search, setSearch] = useState('');
-            const [statusFilter, setStatusFilter] = useState('الكل');
             const [toast, setToast] = useState(null);
+            
+            // Modal States
+            const [selectedIdea, setSelectedIdea] = useState(null);
+            const [actionType, setActionType] = useState(null); // 'move_to_experiment', 'move_to_implement'
+            const [experimentData, setExperimentData] = useState({ duration: 'أسبوع', kpi: '' });
+            const [resultsData, setResultsData] = useState({ before: '', after: '' });
 
-            const showToast = (message, type = 'success') => {
-                setToast({ message, type });
-                setTimeout(() => setToast(null), 2400);
-            };
+            const showToast = (msg, type='success') => { setToast({msg, type}); setTimeout(() => setToast(null), 3000); };
 
             useEffect(() => {
-                const unsubscribe = auth.onAuthStateChanged(currentUser => {
-                    if (currentUser && currentUser.uid === ADMIN_UID) {
-                        setUser(currentUser);
-                    } else {
-                        setUser(null);
-                        if (currentUser) auth.signOut();
-                    }
-                    setAuthChecked(true);
+                const unsubAuth = auth.onAuthStateChanged(u => {
+                    setUser(u);
+                    if (!u) setLoading(false);
                 });
-                return () => unsubscribe();
+                return () => unsubAuth();
             }, []);
 
             useEffect(() => {
                 if (!user) return;
-                const unsubscribe = db.collection('ideas').orderBy('createdAt', 'desc').onSnapshot(
-                    snapshot => {
-                        setIdeas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                        setIdeasLoaded(true);
-                    },
-                    err => { console.error(err); setIdeasLoaded(true); showToast('تعذر تحميل الأفكار', 'error'); }
-                );
-                return () => unsubscribe();
+                const unsubIdeas = db.collection('ideas').orderBy('createdAt', 'desc').onSnapshot(snap => {
+                    setIdeas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    setLoading(false);
+                });
+                return () => unsubIdeas();
             }, [user]);
 
             const handleLogin = async (e) => {
                 e.preventDefault();
-                setError('');
-                setLoginLoading(true);
+                setLoading(true);
                 try {
-                    const cred = await auth.signInWithEmailAndPassword(email.trim(), password);
-                    if (cred.user.uid !== ADMIN_UID) {
-                        setError('عفواً، حسابك ليس لديه صلاحيات الإدارة.');
-                        await auth.signOut();
+                    await auth.signInWithEmailAndPassword(email, password);
+                } catch(err) {
+                    showToast('بيانات الدخول غير صحيحة', 'error');
+                }
+                setLoading(false);
+            };
+
+            // تغيير حالة الفكرة
+            const changeIdeaStatus = async (ideaId, newStatus) => {
+                try {
+                    let updatePayload = { status: newStatus };
+                    
+                    if (newStatus === 'experiment') {
+                        if(!experimentData.kpi) return showToast('برجاء كتابة مؤشر القياس', 'error');
+                        updatePayload.experimentPlan = experimentData;
                     }
-                } catch (err) {
-                    if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-                        setError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
-                    } else {
-                        setError('تعذر تسجيل الدخول، تحقق من البيانات وحاول لاحقاً.');
+                    if (newStatus === 'implemented') {
+                        if(!resultsData.before || !resultsData.after) return showToast('برجاء إدخال الأرقام للقياس', 'error');
+                        const b = parseFloat(resultsData.before);
+                        const a = parseFloat(resultsData.after);
+                        // معادلة حساب نسبة التحسن (بافتراض أن تقليل الرقم هو التحسن كتقليل الوقت/التكلفة)
+                        const improvement = (((b - a) / b) * 100).toFixed(1);
+                        updatePayload.results = { before: b, after: a, improvementPercentage: improvement };
                     }
-                } finally {
-                    setLoginLoading(false);
-                }
+
+                    await db.collection('ideas').doc(ideaId).update(updatePayload);
+                    showToast('تم تحديث مسار الفكرة بنجاح');
+                    setSelectedIdea(null);
+                    setActionType(null);
+                    setExperimentData({ duration: 'أسبوع', kpi: '' });
+                    setResultsData({ before: '', after: '' });
+                } catch (e) { showToast('حدث خطأ', 'error'); }
             };
 
-            const updateStatus = async (id, newStatus) => {
-                setBusyId(id);
-                try {
-                    await db.collection('ideas').doc(id).update({ status: newStatus });
-                    showToast('تم تحديث الحالة بنجاح');
-                } catch (err) {
-                    console.error(err);
-                    showToast('تعذر تحديث الحالة', 'error');
-                } finally {
-                    setBusyId(null);
-                }
+            const openActionModal = (idea, targetStatus) => {
+                if(targetStatus === 'experiment') setActionType('move_to_experiment');
+                else if(targetStatus === 'implemented') setActionType('move_to_implement');
+                else changeIdeaStatus(idea.id, targetStatus); // للخطوات العادية
             };
 
-            const deleteIdea = async (id) => {
-                if (!window.confirm('هل أنت متأكد من الحذف النهائي لهذه الفكرة؟ لا يمكن التراجع.')) return;
-                setBusyId(id);
-                try {
-                    await db.collection('ideas').doc(id).delete();
-                    showToast('تم حذف الفكرة بنجاح');
-                } catch (err) {
-                    console.error(err);
-                    showToast('تعذر حذف الفكرة', 'error');
-                } finally {
-                    setBusyId(null);
-                }
-            };
+            // Analytics Calculations
+            const stats = useMemo(() => {
+                const total = ideas.length || 1; // avoid division by zero
+                const implemented = ideas.filter(i => i.status === 'implemented' || i.status === 'standardized').length;
+                const standardized = ideas.filter(i => i.status === 'standardized').length;
+                
+                const committeeCount = {};
+                COMMITTEES.forEach(c => committeeCount[c] = 0);
+                ideas.forEach(i => { if(committeeCount[i.category] !== undefined) committeeCount[i.category]++; });
 
-            const filteredIdeas = ideas.filter(idea => {
-                const matchesStatus = statusFilter === 'الكل' || idea.status === statusFilter;
-                const matchesSearch = !search.trim() || (idea.title || '').toLowerCase().includes(search.trim().toLowerCase()) || (idea.author || '').toLowerCase().includes(search.trim().toLowerCase());
-                return matchesStatus && matchesSearch;
-            });
-
-            if (!authChecked) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center">
-                        <span className="spinner text-[#002060]" style={{width: '2rem', height: '2rem', borderWidth: '3px'}}></span>
-                    </div>
-                );
-            }
+                return {
+                    total: ideas.length,
+                    implementationRate: ((implemented / total) * 100).toFixed(0),
+                    standardizationRate: ((standardized / total) * 100).toFixed(0),
+                    committeeCount
+                };
+            }, [ideas]);
 
             if (!user) {
                 return (
-                    <div className="min-h-screen flex items-center justify-center p-4">
-                        <form onSubmit={handleLogin} className="bg-white p-6 md:p-8 rounded-2xl shadow-sm w-full max-w-sm border border-slate-200/70">
-                            <div className="flex justify-center mb-4">
-                                <div className="w-14 h-14 rounded-full overflow-hidden shadow-sm ring-1 ring-slate-200 bg-[#001845]">
-                                    <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
-                                </div>
-                            </div>
-                            <h2 className="text-lg md:text-xl font-black text-[#002060] text-center mb-4">لوحة إدارة كايزن YLY</h2>
-                            {error && <div role="alert" className="bg-red-50 text-[#E30613] p-2.5 rounded-xl text-xs font-bold text-center mb-3 border border-red-100">{error}</div>}
-                            <div className="space-y-3">
-                                <input type="email" placeholder="البريد الإلكتروني للإدارة" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200/80 bg-slate-50/50 text-xs font-bold transition-colors" required />
-                                <input type="password" placeholder="كلمة المرور" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200/80 bg-slate-50/50 text-xs font-bold transition-colors" required />
-                                <button type="submit" disabled={loginLoading} className="w-full bg-[#E30613] hover:bg-red-700 text-white py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-60">
-                                    {loginLoading && <span className="spinner"></span>}
-                                    {loginLoading ? 'جاري الدخول...' : 'تسجيل الدخول'}
+                    <div className="min-h-screen flex items-center justify-center p-4 bg-navy">
+                        <form onSubmit={handleLogin} className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl animate-fade-in">
+                            <h1 className="text-2xl font-black text-navy text-center mb-1">لوحة الإدارة - Kaizen</h1>
+                            <p className="text-xs font-bold text-slate-400 text-center mb-6">خاص بقادة الفرق والإدارة فقط</p>
+                            <div className="space-y-4">
+                                <input type="email" placeholder="البريد الإلكتروني للإدارة" required value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm outline-none focus:border-navy" />
+                                <input type="password" placeholder="كلمة المرور" required value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm outline-none focus:border-navy" />
+                                <button type="submit" disabled={loading} className="w-full bg-ylyred hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all shadow-md flex justify-center items-center">
+                                    {loading ? <span className="spinner"></span> : 'تسجيل الدخول'}
                                 </button>
                             </div>
-                            <a href="index.html" className="block text-center mt-4 text-xs text-slate-400 font-bold hover:text-[#002060]">العودة للموقع الرئيسي</a>
                         </form>
                     </div>
                 );
             }
 
             return (
-                <div className="max-w-5xl mx-auto p-3.5 md:p-6">
+                <div className="h-screen flex flex-col bg-[#F0F4F8]">
                     {toast && (
-                        <div role="status" aria-live="polite" className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] text-white px-4 py-2 rounded-full shadow-lg text-xs font-bold whitespace-nowrap ${toast.type === 'error' ? 'bg-red-600' : 'bg-[#002060]'}`}>
-                            {toast.message}
+                        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full text-white text-sm font-bold shadow-lg animate-fade-in ${toast.type==='error'?'bg-red-500':'bg-navy'}`}>
+                            {toast.msg}
                         </div>
                     )}
 
-                    <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200/70">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 shadow-sm ring-1 ring-slate-200 bg-[#001845]">
-                                <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
-                            </div>
-                            <div>
-                                <h1 className="text-base md:text-lg font-black text-[#002060]">إدارة أفكار كايزن</h1>
-                                <p className="text-[10px] md:text-xs font-bold text-[#E30613]">لوحة التحكم المباشرة · {ideas.length} فكرة مسجلة</p>
+                    {/* Navbar */}
+                    <header className="bg-white px-6 py-3 flex justify-between items-center shadow-sm z-10 border-b border-slate-200">
+                        <div className="flex items-center gap-3">
+                            <h1 className="font-black text-navy text-xl">Kaizen <span className="text-ylyred">OS</span> Admin</h1>
+                            <div className="hidden md:flex bg-slate-100 rounded-lg p-1 gap-1 mr-6">
+                                <button onClick={()=>setActiveTab('kanban')} className={`px-4 py-1.5 rounded-md text-sm font-bold flex items-center gap-1 ${activeTab==='kanban'?'bg-white text-navy shadow-sm':'text-slate-500'}`}><Icon path={ICONS.Board} size={16}/> مسار الأفكار</button>
+                                <button onClick={()=>setActiveTab('analytics')} className={`px-4 py-1.5 rounded-md text-sm font-bold flex items-center gap-1 ${activeTab==='analytics'?'bg-white text-navy shadow-sm':'text-slate-500'}`}><Icon path={ICONS.Analytics} size={16}/> التحليلات والأداء</button>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2.5 self-end sm:self-auto">
-                            <a href="index.html" className="text-xs font-bold text-[#002060] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors">عرض الموقع</a>
-                            <button onClick={() => auth.signOut()} className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">خروج</button>
-                        </div>
+                        <button onClick={() => auth.signOut()} className="text-xs font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100">تسجيل الخروج</button>
                     </header>
 
-                    {/* شريط البحث والفلترة */}
-                    <div className="flex flex-col sm:flex-row gap-2.5 mb-4">
-                        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث بعنوان الفكرة أو اسم صاحبها..." className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200/80 bg-white text-xs font-bold transition-colors" />
-                        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3.5 py-2.5 rounded-xl border border-slate-200/80 bg-white text-xs font-bold text-slate-700">
-                            <option value="الكل">كل الحالات</option>
-                            <option value="قيد المراجعة">قيد المراجعة</option>
-                            <option value="جاري التنفيذ">جاري التنفيذ</option>
-                            <option value="مكتمل">مكتمل</option>
-                            <option value="مرفوض">مرفوض</option>
-                        </select>
+                    {/* Mobile Tabs */}
+                    <div className="md:hidden flex bg-white border-b border-slate-200 p-2 gap-2">
+                        <button onClick={()=>setActiveTab('kanban')} className={`flex-1 py-2 rounded-lg text-xs font-bold flex justify-center items-center gap-1 ${activeTab==='kanban'?'bg-navy text-white':'bg-slate-50 text-slate-500'}`}><Icon path={ICONS.Board} size={14}/> مسار الأفكار</button>
+                        <button onClick={()=>setActiveTab('analytics')} className={`flex-1 py-2 rounded-lg text-xs font-bold flex justify-center items-center gap-1 ${activeTab==='analytics'?'bg-navy text-white':'bg-slate-50 text-slate-500'}`}><Icon path={ICONS.Analytics} size={14}/> التحليلات</button>
                     </div>
 
-                    {/* عرض البطاقات في الموبايل */}
-                    <div className="block md:hidden space-y-3">
-                        {!ideasLoaded && [1,2,3].map(n => (
-                            <div key={n} className="bg-white p-4 rounded-xl border border-slate-200/70 space-y-2">
-                                <div className="h-4 w-3/4 rounded skeleton"></div>
-                                <div className="h-8 rounded-lg skeleton"></div>
-                            </div>
-                        ))}
-                        {ideasLoaded && filteredIdeas.length === 0 && (
-                            <div className="bg-white p-8 text-center text-slate-400 font-bold text-xs rounded-2xl border border-slate-200/70">
-                                لا توجد أفكار مطابقة للبحث
+                    {/* Main Content */}
+                    <main className="flex-1 overflow-hidden relative">
+                        
+                        {/* 1. KANBAN BOARD VIEW */}
+                        {activeTab === 'kanban' && (
+                            <div className="h-full w-full overflow-x-auto kanban-scroll flex items-start gap-4 p-4 md:p-6 pb-8">
+                                {STAGES.filter(s => s.id !== 'rejected').map(stage => (
+                                    <div key={stage.id} className="bg-slate-100 rounded-2xl p-3 min-w-[280px] w-[280px] flex-shrink-0 flex flex-col h-[calc(100vh-140px)] border border-slate-200">
+                                        <div className="flex justify-between items-center mb-3 px-1">
+                                            <h3 className="font-black text-sm text-slate-700 flex items-center gap-2">
+                                                <span className={`w-3 h-3 rounded-full ${stage.color}`}></span>
+                                                {stage.label}
+                                            </h3>
+                                            <span className="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">{ideas.filter(i=>i.status === stage.id).length}</span>
+                                        </div>
+                                        
+                                        <div className="flex-1 overflow-y-auto pr-1 space-y-3 kanban-scroll">
+                                            {ideas.filter(i=>i.status === stage.id).map(idea => (
+                                                <div key={idea.id} onClick={() => setSelectedIdea(idea)} className="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:border-navy transition-colors animate-slide-in">
+                                                    <h4 className="font-bold text-navy text-xs leading-relaxed mb-1">{idea.title}</h4>
+                                                    <div className="flex justify-between items-end mt-3">
+                                                        <div>
+                                                            <p className="text-[10px] font-bold text-slate-400">{idea.author}</p>
+                                                            <p className="text-[9px] font-bold text-ylyred bg-red-50 px-1.5 py-0.5 rounded inline-block mt-0.5">{idea.category}</p>
+                                                        </div>
+                                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${idea.expectedImpact === 'High' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
+                                                            تأثير: {idea.expectedImpact}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {ideas.filter(i=>i.status === stage.id).length === 0 && (
+                                                <div className="h-20 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center">
+                                                    <span className="text-xs font-bold text-slate-400">لا يوجد أفكار</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
-                        {filteredIdeas.map(idea => (
-                            <div key={idea.id} className="bg-white p-3.5 rounded-2xl border border-slate-200/70 shadow-xs space-y-2">
-                                <div>
-                                    <div className="flex items-start justify-between gap-2 mb-1">
-                                        <h3 className="font-bold text-xs text-[#002060] leading-snug">{idea.title}</h3>
-                                        <span className="text-[9px] font-bold text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-100/70 shrink-0">اللجنة: {idea.committee}</span>
+
+                        {/* 2. ANALYTICS DASHBOARD VIEW */}
+                        {activeTab === 'analytics' && (
+                            <div className="h-full overflow-y-auto p-4 md:p-8 kanban-scroll animate-fade-in">
+                                <div className="max-w-5xl mx-auto space-y-6">
+                                    <h2 className="text-xl font-black text-navy">لوحة قياس أداء الكايزن (KPIs)</h2>
+                                    
+                                    {/* Top Stats */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                            <p className="text-xs font-bold text-slate-500 mb-1">إجمالي الأفكار</p>
+                                            <p className="text-3xl font-black text-navy">{stats.total}</p>
+                                        </div>
+                                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                            <p className="text-xs font-bold text-slate-500 mb-1">نسبة التنفيذ (Implementation)</p>
+                                            <p className="text-3xl font-black text-emerald-600">{stats.implementationRate}%</p>
+                                            <p className="text-[10px] text-slate-400 mt-1">من الأفكار وصلت للتنفيذ</p>
+                                        </div>
+                                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                            <p className="text-xs font-bold text-slate-500 mb-1">نسبة التعميم (Standardization)</p>
+                                            <p className="text-3xl font-black text-purple-600">{stats.standardizationRate}%</p>
+                                            <p className="text-[10px] text-slate-400 mt-1">من الأفكار أصبحت Standard</p>
+                                        </div>
+                                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                            <p className="text-xs font-bold text-slate-500 mb-1">الأفكار قيد التجربة</p>
+                                            <p className="text-3xl font-black text-orange-500">{ideas.filter(i=>i.status==='experiment' || i.status==='measuring').length}</p>
+                                        </div>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 font-medium">صاحب الفكرة: {idea.author} · {idea.timeAgo}</p>
-                                </div>
 
-                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                                    <select
-                                        disabled={busyId === idea.id}
-                                        value={idea.status}
-                                        onChange={(e) => updateStatus(idea.id, e.target.value)}
-                                        className="border border-slate-200/80 px-2 py-1 rounded-lg bg-slate-50 text-[11px] font-bold text-slate-700"
-                                    >
-                                        <option value="قيد المراجعة">قيد المراجعة</option>
-                                        <option value="جاري التنفيذ">جاري التنفيذ</option>
-                                        <option value="مكتمل">مكتمل</option>
-                                        <option value="مرفوض">مرفوض</option>
-                                    </select>
-
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-slate-600 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                                            {idea.upvotes || 0} 🔥
-                                        </span>
-                                        <button
-                                            disabled={busyId === idea.id}
-                                            onClick={() => deleteIdea(idea.id)}
-                                            className="bg-red-50 text-[#E30613] hover:bg-[#E30613] hover:text-white px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors border border-red-100"
-                                        >
-                                            {busyId === idea.id ? <span className="spinner"></span> : 'حذف'}
-                                        </button>
+                                    {/* Chart: Ideas per Committee */}
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                        <h3 className="text-sm font-black text-navy mb-4">أداء اللجان (الأفكار المقدمة)</h3>
+                                        <div className="space-y-3">
+                                            {Object.entries(stats.committeeCount).sort((a,b)=>b[1]-a[1]).map(([committee, count]) => {
+                                                const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
+                                                return (
+                                                    <div key={committee} className="flex items-center gap-3">
+                                                        <span className="w-24 text-xs font-bold text-slate-600 shrink-0">{committee}</span>
+                                                        <div className="flex-1 bg-slate-100 h-4 rounded-full overflow-hidden">
+                                                            <div className="bg-navy h-full rounded-full" style={{width: `${percentage}%`}}></div>
+                                                        </div>
+                                                        <span className="w-8 text-xs font-black text-navy text-left">{count}</span>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        )}
+                    </main>
 
-                    {/* عرض الجدول في اللابتوب والكمبيوتر */}
-                    <div className="hidden md:block bg-white rounded-2xl shadow-xs overflow-hidden border border-slate-200/70">
-                        <table className="w-full text-right whitespace-nowrap">
-                            <thead className="bg-slate-50 border-b border-slate-100">
-                                <tr>
-                                    <th className="p-3.5 font-bold text-slate-600 text-xs">عنوان الفكرة</th>
-                                    <th className="p-3.5 font-bold text-slate-600 text-xs">اللجنة المعنية</th>
-                                    <th className="p-3.5 font-bold text-slate-600 text-xs">الحالة</th>
-                                    <th className="p-3.5 font-bold text-slate-600 text-xs text-center">الدعم</th>
-                                    <th className="p-3.5 font-bold text-slate-600 text-xs text-center">إجراء</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {!ideasLoaded && [1,2,3].map(n => (
-                                    <tr key={n}>
-                                        <td className="p-3.5" colSpan={5}><div className="h-5 rounded skeleton"></div></td>
-                                    </tr>
-                                ))}
-                                {ideasLoaded && filteredIdeas.length === 0 && (
-                                    <tr><td colSpan={5} className="p-8 text-center text-slate-400 font-bold text-xs">لا توجد أفكار مطابقة</td></tr>
-                                )}
-                                {filteredIdeas.map(idea => (
-                                    <tr key={idea.id} className={`hover:bg-slate-50/60 transition-colors ${busyId === idea.id ? 'opacity-50' : ''}`}>
-                                        <td className="p-3.5">
-                                            <p className="font-bold text-[#002060] text-xs max-w-xs truncate">{idea.title}</p>
-                                            <p className="text-[10px] text-slate-400 mt-0.5">{idea.author} · {idea.timeAgo}</p>
-                                        </td>
-                                        <td className="p-3.5">
-                                            <span className="text-[10px] font-bold text-[#E30613] bg-red-50 px-2 py-0.5 rounded border border-red-100/70">{idea.committee}</span>
-                                        </td>
-                                        <td className="p-3.5">
-                                            <select disabled={busyId === idea.id} value={idea.status} onChange={(e) => updateStatus(idea.id, e.target.value)} className="border border-slate-200/80 px-2.5 py-1.5 rounded-lg bg-slate-50 text-xs font-bold text-slate-700">
-                                                <option value="قيد المراجعة">قيد المراجعة</option>
-                                                <option value="جاري التنفيذ">جاري التنفيذ</option>
-                                                <option value="مكتمل">مكتمل</option>
-                                                <option value="مرفوض">مرفوض</option>
+                    {/* --- IDEA DETAILS MODAL & ACTION WORKFLOW --- */}
+                    {selectedIdea && (
+                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl animate-slide-in overflow-hidden">
+                                
+                                {/* Modal Header */}
+                                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-start bg-slate-50">
+                                    <div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">إدارة الفكرة</span>
+                                        <h2 className="text-lg font-black text-navy leading-tight">{selectedIdea.title}</h2>
+                                        <p className="text-xs font-bold text-slate-500 mt-1">بواسطة: {selectedIdea.author} ({selectedIdea.category})</p>
+                                    </div>
+                                    <button onClick={() => { setSelectedIdea(null); setActionType(null); }} className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400 hover:text-red-500"><Icon path={ICONS.X}/></button>
+                                </div>
+
+                                {/* Modal Body */}
+                                <div className="flex-1 overflow-y-auto p-6 space-y-5 kanban-scroll">
+                                    
+                                    {/* الأساسيات */}
+                                    {!actionType && (
+                                        <>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-red-50/50 p-4 rounded-2xl border border-red-100">
+                                                    <h4 className="text-xs font-black text-ylyred mb-1">الوضع الحالي (المشكلة)</h4>
+                                                    <p className="text-xs text-slate-700 font-medium">{selectedIdea.currentProcess}</p>
+                                                </div>
+                                                <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                                                    <h4 className="text-xs font-black text-blue-600 mb-1">الحل المقترح (الكايزن)</h4>
+                                                    <p className="text-xs text-slate-700 font-medium">{selectedIdea.solution}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* عرض بيانات التجربة والقياس إذا وجدت */}
+                                            {selectedIdea.experimentPlan && (
+                                                <div className="bg-orange-50 p-4 rounded-2xl border border-orange-200">
+                                                    <h4 className="text-xs font-black text-orange-700 mb-2">خطة التجربة المعتمدة</h4>
+                                                    <p className="text-xs text-slate-700 font-bold">المؤشر (KPI): <span className="font-medium">{selectedIdea.experimentPlan.kpi}</span></p>
+                                                    <p className="text-xs text-slate-700 font-bold mt-1">المدة: <span className="font-medium">{selectedIdea.experimentPlan.duration}</span></p>
+                                                </div>
+                                            )}
+                                            {selectedIdea.results && (
+                                                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 flex items-center justify-between">
+                                                    <div>
+                                                        <h4 className="text-xs font-black text-emerald-700 mb-1">نتائج القياس الفعلي</h4>
+                                                        <p className="text-xs text-slate-600 font-bold">تم خفض الرقم من {selectedIdea.results.before} إلى {selectedIdea.results.after}</p>
+                                                    </div>
+                                                    <div className="bg-emerald-600 text-white font-black text-sm px-3 py-1.5 rounded-lg shadow-sm">
+                                                        تحسن {selectedIdea.results.improvementPercentage}%
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* Action Forms (The Kaizen OS Magic) */}
+                                    {actionType === 'move_to_experiment' && (
+                                        <div className="bg-orange-50 p-5 rounded-2xl border border-orange-200 animate-fade-in">
+                                            <h3 className="font-black text-orange-700 mb-3 flex items-center gap-2"><Icon path={ICONS.TrendingUp} size={18}/> بدء خطة التجربة (Experiment)</h3>
+                                            <p className="text-xs text-slate-600 font-medium mb-4">يجب تحديد مؤشر أداء واضح لقياس نجاح هذه الفكرة قبل تعميمها.</p>
+                                            
+                                            <label className="text-[11px] font-black text-slate-700 block mb-1">ما هو الـ KPI المستهدف؟ (مثال: وقت تسجيل الحضور بالدقائق)</label>
+                                            <input type="text" value={experimentData.kpi} onChange={e=>setExperimentData({...experimentData, kpi: e.target.value})} className="w-full bg-white border border-orange-200 px-3 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-orange-500 mb-3" placeholder="مؤشر القياس..." />
+                                            
+                                            <label className="text-[11px] font-black text-slate-700 block mb-1">مدة التجربة</label>
+                                            <select value={experimentData.duration} onChange={e=>setExperimentData({...experimentData, duration: e.target.value})} className="w-full bg-white border border-orange-200 px-3 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-orange-500">
+                                                <option value="أسبوع">أسبوع</option>
+                                                <option value="أسبوعين">أسبوعين</option>
+                                                <option value="شهر">شهر</option>
+                                                <option value="حدث كامل (Event)">حدث كامل (Event)</option>
                                             </select>
-                                        </td>
-                                        <td className="p-3.5 text-center font-bold text-xs text-slate-700">
-                                            {idea.upvotes || 0} <span className="text-orange-500">🔥</span>
-                                        </td>
-                                        <td className="p-3.5 text-center">
-                                            <button disabled={busyId === idea.id} onClick={() => deleteIdea(idea.id)} className="bg-red-50 text-[#E30613] hover:bg-[#E30613] hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-red-100 disabled:opacity-60">
-                                                {busyId === idea.id ? <span className="spinner"></span> : 'حذف'}
+                                        </div>
+                                    )}
+
+                                    {actionType === 'move_to_implement' && (
+                                        <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 animate-fade-in">
+                                            <h3 className="font-black text-emerald-700 mb-3 flex items-center gap-2"><Icon path={ICONS.Check} size={18}/> تسجيل نتائج القياس (Implementation)</h3>
+                                            <p className="text-xs text-slate-600 font-medium mb-4">بناءً على الـ KPI ({selectedIdea.experimentPlan?.kpi || 'المحدد'})، أدخل الأرقام قبل وبعد الفكرة.</p>
+                                            
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-[11px] font-black text-red-600 block mb-1">الرقم قبل التجربة (Before)</label>
+                                                    <input type="number" value={resultsData.before} onChange={e=>setResultsData({...resultsData, before: e.target.value})} className="w-full bg-white border border-emerald-200 px-3 py-2.5 rounded-xl text-xs font-bold outline-none" placeholder="مثال: 20" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[11px] font-black text-emerald-600 block mb-1">الرقم بعد التجربة (After)</label>
+                                                    <input type="number" value={resultsData.after} onChange={e=>setResultsData({...resultsData, after: e.target.value})} className="w-full bg-white border border-emerald-200 px-3 py-2.5 rounded-xl text-xs font-bold outline-none" placeholder="مثال: 8" />
+                                                </div>
+                                            </div>
+                                            <p className="text-[10px] text-slate-500 font-bold mt-3 text-center">سيقوم النظام بحساب نسبة التحسن تلقائياً.</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Modal Actions (Bottom Bar) */}
+                                <div className="px-6 py-4 bg-white border-t border-slate-100 flex flex-wrap gap-2 justify-end">
+                                    {actionType ? (
+                                        <>
+                                            <button onClick={()=>setActionType(null)} className="px-4 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl">إلغاء</button>
+                                            <button onClick={() => changeIdeaStatus(selectedIdea.id, actionType==='move_to_experiment' ? 'experiment' : 'implemented')} className={`px-6 py-2 text-white text-xs font-bold rounded-xl shadow-sm ${actionType==='move_to_experiment'?'bg-orange-500':'bg-emerald-600'}`}>
+                                                حفظ ونقل الفكرة
                                             </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {selectedIdea.status === 'submitted' && <button onClick={()=>changeIdeaStatus(selectedIdea.id, 'under_review')} className="px-4 py-2 bg-blue-100 text-blue-700 text-xs font-bold rounded-xl">بدء المراجعة</button>}
+                                            
+                                            {selectedIdea.status === 'under_review' && <button onClick={()=>changeIdeaStatus(selectedIdea.id, 'approved')} className="px-4 py-2 bg-amber-100 text-amber-700 text-xs font-bold rounded-xl">موافقة مبدئية</button>}
+                                            
+                                            {selectedIdea.status === 'approved' && <button onClick={()=>openActionModal(selectedIdea, 'experiment')} className="px-4 py-2 bg-orange-500 text-white text-xs font-bold rounded-xl shadow-sm">تحديد خطة تجربة (Experiment)</button>}
+                                            
+                                            {selectedIdea.status === 'experiment' && <button onClick={()=>changeIdeaStatus(selectedIdea.id, 'measuring')} className="px-4 py-2 bg-teal-100 text-teal-700 text-xs font-bold rounded-xl">البدء في القياس</button>}
+                                            
+                                            {selectedIdea.status === 'measuring' && <button onClick={()=>openActionModal(selectedIdea, 'implemented')} className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-sm">إدخال النتائج وتنفيذ</button>}
+                                            
+                                            {selectedIdea.status === 'implemented' && <button onClick={()=>changeIdeaStatus(selectedIdea.id, 'standardized')} className="px-4 py-2 bg-purple-600 text-white text-xs font-bold rounded-xl shadow-sm">تعميم في المكتبة (Standardize)</button>}
+
+                                            {(selectedIdea.status === 'submitted' || selectedIdea.status === 'under_review') && (
+                                                <button onClick={()=>changeIdeaStatus(selectedIdea.id, 'rejected')} className="px-4 py-2 bg-red-50 text-red-600 border border-red-100 text-xs font-bold rounded-xl mr-auto">رفض</button>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<AdminPanel />);
+        root.render(<AdminApp />);
     </script>
 </body>
 </html>
