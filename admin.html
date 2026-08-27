@@ -7,17 +7,17 @@
     <!-- ================= SEO & Security Tags ================= -->
     <title>إدارة كايزن YLY | Kaizen OS Admin</title>
     <meta name="description" content="لوحة تحكم إدارة كايزن YLY (Kaizen OS). لمتابعة أفكار التطوير، قياس مؤشرات الأداء، وإدارة مراحل التنفيذ.">
-    <!-- Meta Robots لضمان عدم ظهور صفحة الإدارة في نتائج بحث جوجل (حماية) -->
+    <!-- حماية: منع محركات البحث من أرشفة لوحة الإدارة -->
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#002060">
 
-    <!-- ================= Open Graph (WhatsApp, Facebook) لمعاينة الرابط ================= -->
+    <!-- ================= Open Graph (WhatsApp, Facebook) ================= -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="إدارة كايزن YLY | Kaizen OS">
     <meta property="og:description" content="بوابة دخول الإدارة وقادة الفرق لنظام كايزن YLY لمتابعة الأفكار وإدارة مؤشرات الأداء (KPIs).">
     <meta property="og:image" content="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657868/etyefoyw9madba5a5u1z.png">
 
-    <!-- ================= Icons & Favicon ================= -->
+    <!-- ================= Icons ================= -->
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png">
     <link rel="apple-touch-icon" href="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png">
 
@@ -28,10 +28,9 @@
             theme: {
                 extend: {
                     colors: { navy: '#002060', ylyred: '#E30613' },
-                    animation: { 'fade-in': 'fadeIn 0.3s ease-out', 'slide-in': 'slideIn 0.3s ease-out' },
+                    animation: { 'fade-in': 'fadeIn 0.3s ease-out' },
                     keyframes: {
-                        fadeIn: { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
-                        slideIn: { '0%': { transform: 'translateX(20px)', opacity: 0 }, '100%': { transform: 'translateX(0)', opacity: 1 } }
+                        fadeIn: { '0%': { opacity: 0 }, '100%': { opacity: 1 } }
                     }
                 }
             }
@@ -51,32 +50,32 @@
 
     <style>
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        body { background-color: #F0F4F8; font-family: system-ui, -apple-system, sans-serif; }
+        body { background-color: #F4F7FB; font-family: system-ui, -apple-system, sans-serif; }
         .spinner { width: 1.2rem; height: 1.2rem; border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%; display: inline-block; animation: spin .75s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        /* Custom Scrollbar for Kanban */
-        .kanban-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
-        .kanban-scroll::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 4px; }
-        .kanban-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        input, select, button { outline: none !important; }
+        input:focus-visible, select:focus-visible { border-color: #002060 !important; }
     </style>
 </head>
-<body class="text-slate-800 antialiased">
+<body class="text-slate-800 antialiased selection:bg-[#002060] selection:text-white">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
+        // --- Icons ---
         const Icon = ({ path, size=20, className="" }) => (
             <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{ __html: path }} />
         );
         const ICONS = {
-            Board: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>',
+            List: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
             Analytics: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+            ChevronDown: '<path d="m6 9 6 6 6-6"/>',
             Check: '<polyline points="20 6 9 17 4 12"/>',
-            X: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
-            TrendingUp: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>'
+            LogOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>'
         };
 
+        // --- Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyA3UqEDpP2Llt7ZkloqmlURGULdKEiWF3o",
             authDomain: "yly-2026.firebaseapp.com",
@@ -89,18 +88,19 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        const COMMITTEES = ['HR', 'PR', 'Media', 'OR', 'Events', 'Logistics', 'Communication', 'Training', 'Other'];
+        // 5 Committees Only
+        const COMMITTEES = ['HR', 'PR', 'OR', 'SM', 'Training'];
         
         // المراحل الحقيقية للكايزن
         const STAGES = [
-            { id: 'submitted', label: 'مُقدمة', color: 'bg-slate-200' },
-            { id: 'under_review', label: 'مراجعة', color: 'bg-blue-200' },
-            { id: 'approved', label: 'مقبولة', color: 'bg-amber-200' },
-            { id: 'experiment', label: 'جاري التجربة', color: 'bg-orange-200' },
-            { id: 'measuring', label: 'قياس', color: 'bg-teal-200' },
-            { id: 'implemented', label: 'تم التنفيذ', color: 'bg-emerald-300' },
-            { id: 'standardized', label: 'تعميم (Standard)', color: 'bg-purple-300' },
-            { id: 'rejected', label: 'مرفوضة', color: 'bg-red-200' }
+            { id: 'submitted', label: 'مُقدمة (جديدة)' },
+            { id: 'under_review', label: 'قيد المراجعة' },
+            { id: 'approved', label: 'مقبولة مبدئياً' },
+            { id: 'experiment', label: 'جاري التجربة' },
+            { id: 'measuring', label: 'قياس النتائج' },
+            { id: 'implemented', label: 'تم التنفيذ' },
+            { id: 'standardized', label: 'تعميم (Standard)' },
+            { id: 'rejected', label: 'مرفوضة' }
         ];
 
         function AdminApp() {
@@ -108,15 +108,16 @@
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
             const [loading, setLoading] = useState(true);
-            const [activeTab, setActiveTab] = useState('kanban'); // kanban, analytics
+            
+            const [activeTab, setActiveTab] = useState('list'); // list, analytics
             const [ideas, setIdeas] = useState([]);
             const [toast, setToast] = useState(null);
+            const [filterStatus, setFilterStatus] = useState('all');
             
-            // Modal States
-            const [selectedIdea, setSelectedIdea] = useState(null);
-            const [actionType, setActionType] = useState(null); // 'move_to_experiment', 'move_to_implement'
-            const [experimentData, setExperimentData] = useState({ duration: 'أسبوع', kpi: '' });
-            const [resultsData, setResultsData] = useState({ before: '', after: '' });
+            // State for inline expanding and editing
+            const [expandedId, setExpandedId] = useState(null);
+            const [editData, setEditData] = useState({ status: '', kpi: '', duration: 'أسبوع', before: '', after: '' });
+            const [savingId, setSavingId] = useState(null);
 
             const showToast = (msg, type='success') => { setToast({msg, type}); setTimeout(() => setToast(null), 3000); };
 
@@ -141,55 +142,87 @@
                 e.preventDefault();
                 setLoading(true);
                 try {
-                    await auth.signInWithEmailAndPassword(email, password);
+                    await auth.signInWithEmailAndPassword(email.trim(), password);
                 } catch(err) {
                     showToast('بيانات الدخول غير صحيحة', 'error');
                 }
                 setLoading(false);
             };
 
-            // تغيير حالة الفكرة
-            const changeIdeaStatus = async (ideaId, newStatus) => {
+            const toggleExpand = (idea) => {
+                if (expandedId === idea.id) {
+                    setExpandedId(null);
+                } else {
+                    setExpandedId(idea.id);
+                    setEditData({
+                        status: idea.status || 'submitted',
+                        kpi: idea.experimentPlan?.kpi || '',
+                        duration: idea.experimentPlan?.duration || 'أسبوع',
+                        before: idea.results?.before || '',
+                        after: idea.results?.after || ''
+                    });
+                }
+            };
+
+            const handleSave = async (ideaId) => {
+                setSavingId(ideaId);
                 try {
-                    let updatePayload = { status: newStatus };
+                    let updatePayload = { status: editData.status };
                     
-                    if (newStatus === 'experiment') {
-                        if(!experimentData.kpi) return showToast('برجاء كتابة مؤشر القياس', 'error');
-                        updatePayload.experimentPlan = experimentData;
+                    // Validation for Experiment
+                    if (editData.status === 'experiment') {
+                        if(!editData.kpi.trim()) {
+                            showToast('برجاء كتابة مؤشر القياس (KPI)', 'error');
+                            setSavingId(null);
+                            return;
+                        }
+                        updatePayload.experimentPlan = { kpi: editData.kpi.trim(), duration: editData.duration };
                     }
-                    if (newStatus === 'implemented') {
-                        if(!resultsData.before || !resultsData.after) return showToast('برجاء إدخال الأرقام للقياس', 'error');
-                        const b = parseFloat(resultsData.before);
-                        const a = parseFloat(resultsData.after);
-                        // معادلة حساب نسبة التحسن (بافتراض أن تقليل الرقم هو التحسن كتقليل الوقت/التكلفة)
+                    
+                    // Validation for Implemented
+                    if (editData.status === 'implemented' || editData.status === 'standardized') {
+                        if(!editData.before || !editData.after) {
+                            showToast('برجاء إدخال أرقام القياس (قبل وبعد)', 'error');
+                            setSavingId(null);
+                            return;
+                        }
+                        const b = parseFloat(editData.before);
+                        const a = parseFloat(editData.after);
                         const improvement = (((b - a) / b) * 100).toFixed(1);
                         updatePayload.results = { before: b, after: a, improvementPercentage: improvement };
                     }
 
                     await db.collection('ideas').doc(ideaId).update(updatePayload);
                     showToast('تم تحديث مسار الفكرة بنجاح');
-                    setSelectedIdea(null);
-                    setActionType(null);
-                    setExperimentData({ duration: 'أسبوع', kpi: '' });
-                    setResultsData({ before: '', after: '' });
-                } catch (e) { showToast('حدث خطأ', 'error'); }
+                    setExpandedId(null); // Close the card
+                } catch (e) {
+                    showToast('حدث خطأ أثناء الحفظ', 'error');
+                } finally {
+                    setSavingId(null);
+                }
             };
 
-            const openActionModal = (idea, targetStatus) => {
-                if(targetStatus === 'experiment') setActionType('move_to_experiment');
-                else if(targetStatus === 'implemented') setActionType('move_to_implement');
-                else changeIdeaStatus(idea.id, targetStatus); // للخطوات العادية
+            const deleteIdea = async (id) => {
+                if(!window.confirm('هل أنت متأكد من الحذف النهائي لهذه الفكرة؟')) return;
+                try {
+                    await db.collection('ideas').doc(id).delete();
+                    showToast('تم حذف الفكرة بنجاح');
+                } catch(e) {
+                    showToast('حدث خطأ أثناء الحذف', 'error');
+                }
             };
+
+            const filteredIdeas = filterStatus === 'all' ? ideas : ideas.filter(i => i.status === filterStatus);
 
             // Analytics Calculations
             const stats = useMemo(() => {
-                const total = ideas.length || 1; // avoid division by zero
+                const total = ideas.length || 1;
                 const implemented = ideas.filter(i => i.status === 'implemented' || i.status === 'standardized').length;
                 const standardized = ideas.filter(i => i.status === 'standardized').length;
                 
                 const committeeCount = {};
                 COMMITTEES.forEach(c => committeeCount[c] = 0);
-                ideas.forEach(i => { if(committeeCount[i.category] !== undefined) committeeCount[i.category]++; });
+                ideas.forEach(i => { if(committeeCount[i.authorCommittee] !== undefined) committeeCount[i.authorCommittee]++; });
 
                 return {
                     total: ideas.length,
@@ -199,16 +232,37 @@
                 };
             }, [ideas]);
 
+            const getStatusColor = (status) => {
+                if(status === 'standardized') return 'bg-purple-100 text-purple-700';
+                if(status === 'implemented') return 'bg-emerald-100 text-emerald-700';
+                if(status === 'experiment' || status === 'measuring') return 'bg-blue-100 text-blue-700';
+                if(status === 'approved') return 'bg-amber-100 text-amber-700';
+                if(status === 'rejected') return 'bg-red-100 text-red-700';
+                return 'bg-slate-100 text-slate-600';
+            };
+
             if (!user) {
                 return (
-                    <div className="min-h-screen flex items-center justify-center p-4 bg-navy">
-                        <form onSubmit={handleLogin} className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl animate-fade-in">
-                            <h1 className="text-2xl font-black text-navy text-center mb-1">لوحة الإدارة - Kaizen</h1>
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <form onSubmit={handleLogin} className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-xl border border-slate-200/60 animate-fade-in">
+                            <div className="flex justify-center mb-4">
+                                <div className="w-16 h-16 rounded-full overflow-hidden shadow-sm ring-1 ring-slate-200 bg-[#001845]">
+                                    <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
+                                </div>
+                            </div>
+                            <h1 className="text-xl font-black text-navy text-center mb-1">إدارة كايزن YLY</h1>
                             <p className="text-xs font-bold text-slate-400 text-center mb-6">خاص بقادة الفرق والإدارة فقط</p>
+                            
                             <div className="space-y-4">
-                                <input type="email" placeholder="البريد الإلكتروني للإدارة" required value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm outline-none focus:border-navy" />
-                                <input type="password" placeholder="كلمة المرور" required value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm outline-none focus:border-navy" />
-                                <button type="submit" disabled={loading} className="w-full bg-ylyred hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all shadow-md flex justify-center items-center">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-600 block mb-1">البريد الإلكتروني</label>
+                                    <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm font-bold focus:border-navy" dir="ltr" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-600 block mb-1">كلمة المرور</label>
+                                    <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm font-bold focus:border-navy" />
+                                </div>
+                                <button type="submit" disabled={loading} className="w-full bg-ylyred hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors shadow-sm flex justify-center items-center mt-2">
                                     {loading ? <span className="spinner"></span> : 'تسجيل الدخول'}
                                 </button>
                             </div>
@@ -218,250 +272,210 @@
             }
 
             return (
-                <div className="h-screen flex flex-col bg-[#F0F4F8]">
+                <div className="min-h-screen flex flex-col bg-[#F4F7FB]">
+                    {/* Toast */}
                     {toast && (
-                        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full text-white text-sm font-bold shadow-lg animate-fade-in ${toast.type==='error'?'bg-red-500':'bg-navy'}`}>
+                        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full text-white text-xs font-bold shadow-lg animate-fade-in ${toast.type==='error'?'bg-red-500':'bg-navy'}`}>
                             {toast.msg}
                         </div>
                     )}
 
                     {/* Navbar */}
-                    <header className="bg-white px-6 py-3 flex justify-between items-center shadow-sm z-10 border-b border-slate-200">
-                        <div className="flex items-center gap-3">
-                            <h1 className="font-black text-navy text-xl">Kaizen <span className="text-ylyred">OS</span> Admin</h1>
-                            <div className="hidden md:flex bg-slate-100 rounded-lg p-1 gap-1 mr-6">
-                                <button onClick={()=>setActiveTab('kanban')} className={`px-4 py-1.5 rounded-md text-sm font-bold flex items-center gap-1 ${activeTab==='kanban'?'bg-white text-navy shadow-sm':'text-slate-500'}`}><Icon path={ICONS.Board} size={16}/> مسار الأفكار</button>
-                                <button onClick={()=>setActiveTab('analytics')} className={`px-4 py-1.5 rounded-md text-sm font-bold flex items-center gap-1 ${activeTab==='analytics'?'bg-white text-navy shadow-sm':'text-slate-500'}`}><Icon path={ICONS.Analytics} size={16}/> التحليلات والأداء</button>
+                    <header className="bg-white px-4 md:px-6 py-3 flex justify-between items-center shadow-sm z-10 border-b border-slate-200 sticky top-0">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-[#001845] shrink-0">
+                                <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
+                            </div>
+                            <div>
+                                <h1 className="font-black text-navy text-sm md:text-base leading-none">إدارة كايزن</h1>
+                                <span className="text-[9px] font-bold text-ylyred block mt-0.5">YLY Kaizen OS</span>
                             </div>
                         </div>
-                        <button onClick={() => auth.signOut()} className="text-xs font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100">تسجيل الخروج</button>
+                        <button onClick={() => auth.signOut()} className="text-[10px] font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 flex items-center gap-1">
+                            <Icon path={ICONS.LogOut} size={14}/> خروج
+                        </button>
                     </header>
 
-                    {/* Mobile Tabs */}
-                    <div className="md:hidden flex bg-white border-b border-slate-200 p-2 gap-2">
-                        <button onClick={()=>setActiveTab('kanban')} className={`flex-1 py-2 rounded-lg text-xs font-bold flex justify-center items-center gap-1 ${activeTab==='kanban'?'bg-navy text-white':'bg-slate-50 text-slate-500'}`}><Icon path={ICONS.Board} size={14}/> مسار الأفكار</button>
-                        <button onClick={()=>setActiveTab('analytics')} className={`flex-1 py-2 rounded-lg text-xs font-bold flex justify-center items-center gap-1 ${activeTab==='analytics'?'bg-navy text-white':'bg-slate-50 text-slate-500'}`}><Icon path={ICONS.Analytics} size={14}/> التحليلات</button>
+                    {/* Tabs */}
+                    <div className="bg-white border-b border-slate-200 px-4 py-2 flex gap-2 overflow-x-auto hide-scroll">
+                        <button onClick={()=>setActiveTab('list')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors ${activeTab==='list'?'bg-navy text-white':'bg-slate-50 text-slate-600'}`}>
+                            <Icon path={ICONS.List} size={16}/> قائمة الأفكار
+                        </button>
+                        <button onClick={()=>setActiveTab('analytics')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors ${activeTab==='analytics'?'bg-navy text-white':'bg-slate-50 text-slate-600'}`}>
+                            <Icon path={ICONS.Analytics} size={16}/> الإحصائيات والأداء
+                        </button>
                     </div>
 
-                    {/* Main Content */}
-                    <main className="flex-1 overflow-hidden relative">
+                    {/* Main Area */}
+                    <main className="flex-1 p-4 md:p-6 max-w-4xl mx-auto w-full">
                         
-                        {/* 1. KANBAN BOARD VIEW */}
-                        {activeTab === 'kanban' && (
-                            <div className="h-full w-full overflow-x-auto kanban-scroll flex items-start gap-4 p-4 md:p-6 pb-8">
-                                {STAGES.filter(s => s.id !== 'rejected').map(stage => (
-                                    <div key={stage.id} className="bg-slate-100 rounded-2xl p-3 min-w-[280px] w-[280px] flex-shrink-0 flex flex-col h-[calc(100vh-140px)] border border-slate-200">
-                                        <div className="flex justify-between items-center mb-3 px-1">
-                                            <h3 className="font-black text-sm text-slate-700 flex items-center gap-2">
-                                                <span className={`w-3 h-3 rounded-full ${stage.color}`}></span>
-                                                {stage.label}
-                                            </h3>
-                                            <span className="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">{ideas.filter(i=>i.status === stage.id).length}</span>
-                                        </div>
+                        {/* 1. LIST VIEW (Inline Expandable Cards) */}
+                        {activeTab === 'list' && (
+                            <div className="animate-fade-in space-y-4">
+                                
+                                {/* Filter Bar */}
+                                <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex items-center">
+                                    <span className="text-[10px] font-bold text-slate-400 px-3 hidden sm:block">تصفية حسب الحالة:</span>
+                                    <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="flex-1 bg-transparent text-xs font-bold text-navy outline-none px-2 py-1">
+                                        <option value="all">عرض جميع الأفكار ({ideas.length})</option>
+                                        {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                                    </select>
+                                </div>
+
+                                {loading && <div className="text-center mt-10"><span className="spinner text-navy"></span></div>}
+                                {!loading && filteredIdeas.length === 0 && (
+                                    <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
+                                        <p className="text-xs font-bold text-slate-400">لا توجد أفكار متطابقة مع البحث</p>
+                                    </div>
+                                )}
+
+                                {/* Ideas List */}
+                                <div className="space-y-3">
+                                    {filteredIdeas.map(idea => {
+                                        const isExpanded = expandedId === idea.id;
+                                        const stageLabel = STAGES.find(s => s.id === idea.status)?.label || 'غير محدد';
                                         
-                                        <div className="flex-1 overflow-y-auto pr-1 space-y-3 kanban-scroll">
-                                            {ideas.filter(i=>i.status === stage.id).map(idea => (
-                                                <div key={idea.id} onClick={() => setSelectedIdea(idea)} className="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:border-navy transition-colors animate-slide-in">
-                                                    <h4 className="font-bold text-navy text-xs leading-relaxed mb-1">{idea.title}</h4>
-                                                    <div className="flex justify-between items-end mt-3">
-                                                        <div>
-                                                            <p className="text-[10px] font-bold text-slate-400">{idea.author}</p>
-                                                            <p className="text-[9px] font-bold text-ylyred bg-red-50 px-1.5 py-0.5 rounded inline-block mt-0.5">{idea.category}</p>
+                                        return (
+                                            <div key={idea.id} className={`bg-white rounded-2xl border transition-all duration-300 ${isExpanded ? 'border-navy shadow-md' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
+                                                
+                                                {/* Card Header (Always Visible) */}
+                                                <div onClick={() => toggleExpand(idea)} className="p-4 cursor-pointer flex justify-between items-center gap-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <h3 className="font-bold text-navy text-sm truncate mb-1">{idea.title}</h3>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-bold text-slate-500">{idea.author}</span>
+                                                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                                            <span className="text-[9px] font-bold text-ylyred bg-red-50 px-1.5 py-0.5 rounded">{idea.authorCommittee}</span>
                                                         </div>
-                                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${idea.expectedImpact === 'High' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
-                                                            تأثير: {idea.expectedImpact}
-                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-2 shrink-0">
+                                                        <span className={`px-2 py-1 rounded text-[9px] font-bold ${getStatusColor(idea.status)}`}>{stageLabel}</span>
+                                                        <Icon path={ICONS.ChevronDown} size={16} className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-180 text-navy' : ''}`} />
                                                     </div>
                                                 </div>
-                                            ))}
-                                            {ideas.filter(i=>i.status === stage.id).length === 0 && (
-                                                <div className="h-20 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center">
-                                                    <span className="text-xs font-bold text-slate-400">لا يوجد أفكار</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+
+                                                {/* Expanded Body (Inline Edit Area) */}
+                                                {isExpanded && (
+                                                    <div className="p-4 pt-0 border-t border-slate-100 animate-fade-in">
+                                                        
+                                                        {/* Read-Only Info */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 my-4">
+                                                            <div className="bg-red-50/50 p-3 rounded-xl border border-red-100">
+                                                                <span className="text-[10px] font-black text-ylyred block mb-1">المشكلة الحالية:</span>
+                                                                <p className="text-xs text-slate-700 font-medium leading-relaxed">{idea.problem}</p>
+                                                            </div>
+                                                            <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                                                                <span className="text-[10px] font-black text-blue-600 block mb-1">الحل المقترح (الكايزن):</span>
+                                                                <p className="text-xs text-slate-700 font-medium leading-relaxed">{idea.solution}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Action Form */}
+                                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                                                            <div>
+                                                                <label className="text-[10px] font-black text-navy block mb-1.5">تغيير مرحلة الفكرة (Status)</label>
+                                                                <select value={editData.status} onChange={e=>setEditData({...editData, status: e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-lg text-xs font-bold text-navy">
+                                                                    {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                                                                </select>
+                                                            </div>
+
+                                                            {/* Dynamic Inputs Based on Status */}
+                                                            {editData.status === 'experiment' && (
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg animate-fade-in">
+                                                                    <div>
+                                                                        <label className="text-[10px] font-black text-orange-700 block mb-1">مؤشر القياس (KPI) <span className="text-red-500">*</span></label>
+                                                                        <input type="text" value={editData.kpi} onChange={e=>setEditData({...editData, kpi: e.target.value})} placeholder="مثال: وقت التنفيذ بالدقائق" className="w-full bg-white border border-orange-200 px-3 py-2 rounded-lg text-xs font-bold" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] font-black text-orange-700 block mb-1">مدة التجربة</label>
+                                                                        <select value={editData.duration} onChange={e=>setEditData({...editData, duration: e.target.value})} className="w-full bg-white border border-orange-200 px-3 py-2 rounded-lg text-xs font-bold">
+                                                                            <option value="أسبوع">أسبوع</option>
+                                                                            <option value="أسبوعين">أسبوعين</option>
+                                                                            <option value="شهر">شهر</option>
+                                                                            <option value="خلال الإيفنت">خلال الإيفنت القادم</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {(editData.status === 'implemented' || editData.status === 'standardized') && (
+                                                                <div className="grid grid-cols-2 gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg animate-fade-in">
+                                                                    <div>
+                                                                        <label className="text-[10px] font-black text-emerald-700 block mb-1">الرقم قبل (Before) <span className="text-red-500">*</span></label>
+                                                                        <input type="number" value={editData.before} onChange={e=>setEditData({...editData, before: e.target.value})} placeholder="مثال: 20" className="w-full bg-white border border-emerald-200 px-3 py-2 rounded-lg text-xs font-bold" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] font-black text-emerald-700 block mb-1">الرقم بعد (After) <span className="text-red-500">*</span></label>
+                                                                        <input type="number" value={editData.after} onChange={e=>setEditData({...editData, after: e.target.value})} placeholder="مثال: 8" className="w-full bg-white border border-emerald-200 px-3 py-2 rounded-lg text-xs font-bold" />
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="flex justify-between items-center pt-2">
+                                                                <button onClick={() => deleteIdea(idea.id)} className="text-[10px] font-bold text-red-500 hover:underline">حذف الفكرة نهائياً</button>
+                                                                <div className="flex gap-2">
+                                                                    <button onClick={() => setExpandedId(null)} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-lg">إلغاء</button>
+                                                                    <button onClick={() => handleSave(idea.id)} disabled={savingId === idea.id} className="px-6 py-2 bg-navy text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5">
+                                                                        {savingId === idea.id ? <span className="spinner"></span> : <><Icon path={ICONS.Check} size={14}/> حفظ التعديل</>}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
 
-                        {/* 2. ANALYTICS DASHBOARD VIEW */}
+                        {/* 2. ANALYTICS VIEW */}
                         {activeTab === 'analytics' && (
-                            <div className="h-full overflow-y-auto p-4 md:p-8 kanban-scroll animate-fade-in">
-                                <div className="max-w-5xl mx-auto space-y-6">
-                                    <h2 className="text-xl font-black text-navy">لوحة قياس أداء الكايزن (KPIs)</h2>
-                                    
-                                    {/* Top Stats */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                                            <p className="text-xs font-bold text-slate-500 mb-1">إجمالي الأفكار</p>
-                                            <p className="text-3xl font-black text-navy">{stats.total}</p>
-                                        </div>
-                                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                                            <p className="text-xs font-bold text-slate-500 mb-1">نسبة التنفيذ (Implementation)</p>
-                                            <p className="text-3xl font-black text-emerald-600">{stats.implementationRate}%</p>
-                                            <p className="text-[10px] text-slate-400 mt-1">من الأفكار وصلت للتنفيذ</p>
-                                        </div>
-                                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                                            <p className="text-xs font-bold text-slate-500 mb-1">نسبة التعميم (Standardization)</p>
-                                            <p className="text-3xl font-black text-purple-600">{stats.standardizationRate}%</p>
-                                            <p className="text-[10px] text-slate-400 mt-1">من الأفكار أصبحت Standard</p>
-                                        </div>
-                                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                                            <p className="text-xs font-bold text-slate-500 mb-1">الأفكار قيد التجربة</p>
-                                            <p className="text-3xl font-black text-orange-500">{ideas.filter(i=>i.status==='experiment' || i.status==='measuring').length}</p>
-                                        </div>
+                            <div className="animate-fade-in space-y-4">
+                                <h2 className="text-lg font-black text-navy mb-4">مؤشرات الأداء (KPIs)</h2>
+                                
+                                {/* Top Stats */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 text-center">
+                                        <p className="text-[10px] font-bold text-slate-500 mb-1">إجمالي الأفكار</p>
+                                        <p className="text-3xl font-black text-navy">{stats.total}</p>
                                     </div>
+                                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-200 text-center bg-emerald-50/30">
+                                        <p className="text-[10px] font-bold text-emerald-700 mb-1">نسبة التنفيذ الإجمالية</p>
+                                        <p className="text-3xl font-black text-emerald-600">{stats.implementationRate}%</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-200 text-center bg-purple-50/30">
+                                        <p className="text-[10px] font-bold text-purple-700 mb-1">نسبة التعميم (Standard)</p>
+                                        <p className="text-3xl font-black text-purple-600">{stats.standardizationRate}%</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-orange-200 text-center bg-orange-50/30">
+                                        <p className="text-[10px] font-bold text-orange-700 mb-1">أفكار قيد التجربة/القياس</p>
+                                        <p className="text-3xl font-black text-orange-500">{ideas.filter(i=>i.status==='experiment' || i.status==='measuring').length}</p>
+                                    </div>
+                                </div>
 
-                                    {/* Chart: Ideas per Committee */}
-                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                        <h3 className="text-sm font-black text-navy mb-4">أداء اللجان (الأفكار المقدمة)</h3>
-                                        <div className="space-y-3">
-                                            {Object.entries(stats.committeeCount).sort((a,b)=>b[1]-a[1]).map(([committee, count]) => {
-                                                const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
-                                                return (
-                                                    <div key={committee} className="flex items-center gap-3">
-                                                        <span className="w-24 text-xs font-bold text-slate-600 shrink-0">{committee}</span>
-                                                        <div className="flex-1 bg-slate-100 h-4 rounded-full overflow-hidden">
-                                                            <div className="bg-navy h-full rounded-full" style={{width: `${percentage}%`}}></div>
-                                                        </div>
-                                                        <span className="w-8 text-xs font-black text-navy text-left">{count}</span>
+                                {/* Committees Performance */}
+                                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mt-4">
+                                    <h3 className="text-sm font-black text-navy mb-4 border-b border-slate-100 pb-2">مشاركة اللجان (الأفكار المقدمة)</h3>
+                                    <div className="space-y-4">
+                                        {Object.entries(stats.committeeCount).sort((a,b)=>b[1]-a[1]).map(([committee, count]) => {
+                                            const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
+                                            return (
+                                                <div key={committee} className="flex items-center gap-3">
+                                                    <span className="w-16 text-xs font-bold text-slate-700 shrink-0">{committee}</span>
+                                                    <div className="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                                        <div className="bg-ylyred h-full rounded-full transition-all duration-1000" style={{width: `${percentage}%`}}></div>
                                                     </div>
-                                                )
-                                            })}
-                                        </div>
+                                                    <span className="w-8 text-xs font-black text-navy text-left">{count}</span>
+                                                </div>
+                                            )
+                                        })}
                                     </div>
                                 </div>
                             </div>
                         )}
                     </main>
-
-                    {/* --- IDEA DETAILS MODAL & ACTION WORKFLOW --- */}
-                    {selectedIdea && (
-                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                            <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl animate-slide-in overflow-hidden">
-                                
-                                {/* Modal Header */}
-                                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-start bg-slate-50">
-                                    <div>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 block">إدارة الفكرة</span>
-                                        <h2 className="text-lg font-black text-navy leading-tight">{selectedIdea.title}</h2>
-                                        <p className="text-xs font-bold text-slate-500 mt-1">بواسطة: {selectedIdea.author} ({selectedIdea.category})</p>
-                                    </div>
-                                    <button onClick={() => { setSelectedIdea(null); setActionType(null); }} className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400 hover:text-red-500"><Icon path={ICONS.X}/></button>
-                                </div>
-
-                                {/* Modal Body */}
-                                <div className="flex-1 overflow-y-auto p-6 space-y-5 kanban-scroll">
-                                    
-                                    {/* الأساسيات */}
-                                    {!actionType && (
-                                        <>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="bg-red-50/50 p-4 rounded-2xl border border-red-100">
-                                                    <h4 className="text-xs font-black text-ylyred mb-1">الوضع الحالي (المشكلة)</h4>
-                                                    <p className="text-xs text-slate-700 font-medium">{selectedIdea.currentProcess}</p>
-                                                </div>
-                                                <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
-                                                    <h4 className="text-xs font-black text-blue-600 mb-1">الحل المقترح (الكايزن)</h4>
-                                                    <p className="text-xs text-slate-700 font-medium">{selectedIdea.solution}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* عرض بيانات التجربة والقياس إذا وجدت */}
-                                            {selectedIdea.experimentPlan && (
-                                                <div className="bg-orange-50 p-4 rounded-2xl border border-orange-200">
-                                                    <h4 className="text-xs font-black text-orange-700 mb-2">خطة التجربة المعتمدة</h4>
-                                                    <p className="text-xs text-slate-700 font-bold">المؤشر (KPI): <span className="font-medium">{selectedIdea.experimentPlan.kpi}</span></p>
-                                                    <p className="text-xs text-slate-700 font-bold mt-1">المدة: <span className="font-medium">{selectedIdea.experimentPlan.duration}</span></p>
-                                                </div>
-                                            )}
-                                            {selectedIdea.results && (
-                                                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 flex items-center justify-between">
-                                                    <div>
-                                                        <h4 className="text-xs font-black text-emerald-700 mb-1">نتائج القياس الفعلي</h4>
-                                                        <p className="text-xs text-slate-600 font-bold">تم خفض الرقم من {selectedIdea.results.before} إلى {selectedIdea.results.after}</p>
-                                                    </div>
-                                                    <div className="bg-emerald-600 text-white font-black text-sm px-3 py-1.5 rounded-lg shadow-sm">
-                                                        تحسن {selectedIdea.results.improvementPercentage}%
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-
-                                    {/* Action Forms (The Kaizen OS Magic) */}
-                                    {actionType === 'move_to_experiment' && (
-                                        <div className="bg-orange-50 p-5 rounded-2xl border border-orange-200 animate-fade-in">
-                                            <h3 className="font-black text-orange-700 mb-3 flex items-center gap-2"><Icon path={ICONS.TrendingUp} size={18}/> بدء خطة التجربة (Experiment)</h3>
-                                            <p className="text-xs text-slate-600 font-medium mb-4">يجب تحديد مؤشر أداء واضح لقياس نجاح هذه الفكرة قبل تعميمها.</p>
-                                            
-                                            <label className="text-[11px] font-black text-slate-700 block mb-1">ما هو الـ KPI المستهدف؟ (مثال: وقت تسجيل الحضور بالدقائق)</label>
-                                            <input type="text" value={experimentData.kpi} onChange={e=>setExperimentData({...experimentData, kpi: e.target.value})} className="w-full bg-white border border-orange-200 px-3 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-orange-500 mb-3" placeholder="مؤشر القياس..." />
-                                            
-                                            <label className="text-[11px] font-black text-slate-700 block mb-1">مدة التجربة</label>
-                                            <select value={experimentData.duration} onChange={e=>setExperimentData({...experimentData, duration: e.target.value})} className="w-full bg-white border border-orange-200 px-3 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-orange-500">
-                                                <option value="أسبوع">أسبوع</option>
-                                                <option value="أسبوعين">أسبوعين</option>
-                                                <option value="شهر">شهر</option>
-                                                <option value="حدث كامل (Event)">حدث كامل (Event)</option>
-                                            </select>
-                                        </div>
-                                    )}
-
-                                    {actionType === 'move_to_implement' && (
-                                        <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 animate-fade-in">
-                                            <h3 className="font-black text-emerald-700 mb-3 flex items-center gap-2"><Icon path={ICONS.Check} size={18}/> تسجيل نتائج القياس (Implementation)</h3>
-                                            <p className="text-xs text-slate-600 font-medium mb-4">بناءً على الـ KPI ({selectedIdea.experimentPlan?.kpi || 'المحدد'})، أدخل الأرقام قبل وبعد الفكرة.</p>
-                                            
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="text-[11px] font-black text-red-600 block mb-1">الرقم قبل التجربة (Before)</label>
-                                                    <input type="number" value={resultsData.before} onChange={e=>setResultsData({...resultsData, before: e.target.value})} className="w-full bg-white border border-emerald-200 px-3 py-2.5 rounded-xl text-xs font-bold outline-none" placeholder="مثال: 20" />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[11px] font-black text-emerald-600 block mb-1">الرقم بعد التجربة (After)</label>
-                                                    <input type="number" value={resultsData.after} onChange={e=>setResultsData({...resultsData, after: e.target.value})} className="w-full bg-white border border-emerald-200 px-3 py-2.5 rounded-xl text-xs font-bold outline-none" placeholder="مثال: 8" />
-                                                </div>
-                                            </div>
-                                            <p className="text-[10px] text-slate-500 font-bold mt-3 text-center">سيقوم النظام بحساب نسبة التحسن تلقائياً.</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Modal Actions (Bottom Bar) */}
-                                <div className="px-6 py-4 bg-white border-t border-slate-100 flex flex-wrap gap-2 justify-end">
-                                    {actionType ? (
-                                        <>
-                                            <button onClick={()=>setActionType(null)} className="px-4 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl">إلغاء</button>
-                                            <button onClick={() => changeIdeaStatus(selectedIdea.id, actionType==='move_to_experiment' ? 'experiment' : 'implemented')} className={`px-6 py-2 text-white text-xs font-bold rounded-xl shadow-sm ${actionType==='move_to_experiment'?'bg-orange-500':'bg-emerald-600'}`}>
-                                                حفظ ونقل الفكرة
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            {selectedIdea.status === 'submitted' && <button onClick={()=>changeIdeaStatus(selectedIdea.id, 'under_review')} className="px-4 py-2 bg-blue-100 text-blue-700 text-xs font-bold rounded-xl">بدء المراجعة</button>}
-                                            
-                                            {selectedIdea.status === 'under_review' && <button onClick={()=>changeIdeaStatus(selectedIdea.id, 'approved')} className="px-4 py-2 bg-amber-100 text-amber-700 text-xs font-bold rounded-xl">موافقة مبدئية</button>}
-                                            
-                                            {selectedIdea.status === 'approved' && <button onClick={()=>openActionModal(selectedIdea, 'experiment')} className="px-4 py-2 bg-orange-500 text-white text-xs font-bold rounded-xl shadow-sm">تحديد خطة تجربة (Experiment)</button>}
-                                            
-                                            {selectedIdea.status === 'experiment' && <button onClick={()=>changeIdeaStatus(selectedIdea.id, 'measuring')} className="px-4 py-2 bg-teal-100 text-teal-700 text-xs font-bold rounded-xl">البدء في القياس</button>}
-                                            
-                                            {selectedIdea.status === 'measuring' && <button onClick={()=>openActionModal(selectedIdea, 'implemented')} className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-sm">إدخال النتائج وتنفيذ</button>}
-                                            
-                                            {selectedIdea.status === 'implemented' && <button onClick={()=>changeIdeaStatus(selectedIdea.id, 'standardized')} className="px-4 py-2 bg-purple-600 text-white text-xs font-bold rounded-xl shadow-sm">تعميم في المكتبة (Standardize)</button>}
-
-                                            {(selectedIdea.status === 'submitted' || selectedIdea.status === 'under_review') && (
-                                                <button onClick={()=>changeIdeaStatus(selectedIdea.id, 'rejected')} className="px-4 py-2 bg-red-50 text-red-600 border border-red-100 text-xs font-bold rounded-xl mr-auto">رفض</button>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                 </div>
             );
         }
