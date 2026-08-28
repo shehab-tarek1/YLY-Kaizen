@@ -1,0 +1,31 @@
+* { 
+    -webkit-tap-highlight-color: transparent; 
+    box-sizing: border-box; 
+}
+
+body { 
+    background-color: #F4F7FB; 
+    font-family: system-ui, -apple-system, sans-serif; 
+}
+
+.spinner { 
+    width: 1.2rem; 
+    height: 1.2rem; 
+    border: 2.5px solid currentColor; 
+    border-right-color: transparent; 
+    border-radius: 50%; 
+    display: inline-block; 
+    animation: spin .75s linear infinite; 
+}
+
+@keyframes spin { 
+    to { transform: rotate(360deg); } 
+}
+
+input, select, button { 
+    outline: none !important; 
+}
+
+input:focus-visible, select:focus-visible { 
+    border-color: #002060 !important; 
+}
