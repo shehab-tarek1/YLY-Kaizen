@@ -1159,7 +1159,4 @@ function YlyKaizenApp() {
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<YlyKaizenApp />);
-    </script>
-</body>
-</html>
+root.render(<YlyKaizenApp />);
