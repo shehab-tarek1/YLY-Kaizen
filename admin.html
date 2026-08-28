@@ -296,31 +296,63 @@
 
             // حساب بطل كل لجنة (الأول في النقاط من كل لجنة)
             const topPerCommittee = useMemo(() => {
-                const userScores = {};
+                const userStats = {};
+
                 ideas.forEach(idea => {
                     const uid = idea.authorId;
                     if (!uid) return;
-                    const comm = idea.authorCommittee || 'HR';
-                    if (!userScores[uid]) {
-                        userScores[uid] = {
-                            name: idea.author,
-                            avatar: idea.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(idea.author || 'YLY')}&backgroundColor=002060,E30613`,
+
+                    const points = SCORE_MAP[idea.status] || 0;
+                    const ideaTimestamp = idea.createdAt?.seconds || (Date.now() / 1000);
+                    // تحديد لجنة العضو الحقيقية
+                    const memberCommittee = idea.authorCommittee || 'HR';
+
+                    if (!userStats[uid]) {
+                        userStats[uid] = {
                             uid: uid,
-                            committee: comm,
-                            score: 0
+                            name: idea.author || 'عضو YLY',
+                            avatar: idea.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(idea.author || 'YLY')}&backgroundColor=002060,E30613`,
+                            committee: memberCommittee,
+                            score: 0,
+                            earliestTimestamp: ideaTimestamp // لتحديد الأقدم
                         };
                     }
-                    userScores[uid].score += (SCORE_MAP[idea.status] || 0);
+
+                    // جمع إجمالي نقاط العضو
+                    userStats[uid].score += points;
+
+                    // حفظ تاريخ أقدم فكرة طرحها العضو
+                    if (ideaTimestamp < userStats[uid].earliestTimestamp) {
+                        userStats[uid].earliestTimestamp = ideaTimestamp;
+                    }
+
+                    // تثبيت لجنة العضو الصحيحة
+                    if (idea.authorCommittee) {
+                        userStats[uid].committee = idea.authorCommittee;
+                    }
                 });
 
                 const champions = [];
+                
+                // المرور على اللجان الخمسة واختيار الأول فقط
                 COMMITTEES.forEach(comm => {
-                    const members = Object.values(userScores).filter(u => u.committee === comm);
-                    if (members.length > 0) {
-                        members.sort((a, b) => b.score - a.score);
-                        champions.push({ ...members[0], committeeName: comm });
+                    const committeeMembers = Object.values(userStats).filter(u => u.committee === comm);
+
+                    if (committeeMembers.length > 0) {
+                        committeeMembers.sort((a, b) => {
+                            // 1. الترتيب بالأعلى نقاطاً أولاً
+                            if (b.score !== a.score) {
+                                return b.score - a.score;
+                            }
+                            // 2. في حال التساوي، الأقدم تسجيلاً / طرحاً للفكرة يفوز
+                            return a.earliestTimestamp - b.earliestTimestamp;
+                        });
+
+                        // أخذ المتصدر الحقيقي للجنة
+                        champions.push({ ...committeeMembers[0], committeeName: comm });
                     }
                 });
+
                 return champions;
             }, [ideas]);
 
