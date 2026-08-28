@@ -6,6 +6,12 @@
     
     <!-- ================= SEO & Meta Tags ================= -->
     <title>نظام كايزن YLY | منصة التطوير المستمر</title>
+
+<!-- منع الكاش نهائياً لضمان تحديث الموقع باستمرار -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <meta name="description" content="منصة كايزن YLY للتطوير المستمر. شارك أفكارك، حولها إلى واقع، وساهم في تطوير بيئة العمل والكيان من خلال نظام مؤسسي متكامل للتحسين المستمر.">
     <meta name="keywords" content="كايزن, YLY, تطوير مستمر, تحسين بيئة العمل, وزارة الشباب والرياضة, Kaizen, Continuous Improvement, YLY Sharkia">
     <meta name="author" content="YLY Kaizen Team">
@@ -503,7 +509,13 @@
             };
 
             const handleAddComment = async (ideaId) => {
-                if (!newComment.trim() || !user || isCommenting) return;
+                const commentText = newComment.trim();
+                if (!commentText || !user || isCommenting) return;
+                
+                // تفريغ الحقل فوراً لمنع التعليق
+                setNewComment("");
+                setIsCommenting(true);
+
                 const authorName = user.displayName || userProfile?.name || "عضو YLY";
                 const authorAvatar = user.photoURL || userProfile?.avatar || getAvatar(authorName);
                 const newCommentObj = {
@@ -512,18 +524,17 @@
                     authorUid: user.uid,
                     avatar: authorAvatar,
                     committee: userProfile?.committee || "عضو",
-                    text: newComment.trim(),
+                    text: commentText,
                     time: new Date().toLocaleDateString('ar-EG')
                 };
 
-                setIsCommenting(true);
                 try {
                     await db.collection('ideas').doc(ideaId).update({
                         commentsList: firebase.firestore.FieldValue.arrayUnion(newCommentObj)
                     });
-                    setNewComment("");
                 } catch (err) {
-                    showToast('تعذر إرسال التعليق', 'error');
+                    setNewComment(commentText); // استرجاع النص في حال فشل الاتصال
+                    showToast('تعذر إرسال التعليق، تحقق من الاتصال', 'error');
                 } finally {
                     setIsCommenting(false);
                 }
@@ -809,7 +820,7 @@
                                 {/* Sticky Comment Input */}
                                 <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 p-2.5 pb-safe z-30 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] rounded-t-[20px]">
                                     <div className="max-w-xl mx-auto flex items-center gap-2">
-                                        <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => {if(e.key==='Enter') handleAddComment(selectedIdea.id)}} placeholder={user ? "اكتب تعليقاً..." : "سجل الدخول للتعليق"} disabled={!user || isCommenting} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:border-navy" />
+                                        <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => {if(e.key==='Enter') handleAddComment(selectedIdea.id)}} placeholder={user ? "اكتب تعليقاً..." : "سجل الدخول للتعليق"} disabled={!user} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:border-navy" />
                                         <button onClick={() => user ? handleAddComment(selectedIdea.id) : setActiveTab('auth')} disabled={user && (!newComment.trim() || isCommenting)} className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${(user && newComment.trim() && !isCommenting) || !user ? 'bg-ylyred text-white' : 'bg-slate-100 text-slate-300'}`}>
                                             {isCommenting ? <span className="spinner"></span> : <Send size={15} className="transform rotate-180" />}
                                         </button>
