@@ -1,0 +1,663 @@
+const { useState, useEffect, useMemo } = React;
+
+// --- Icons ---
+const Icon = ({ path, size=20, className="" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{ __html: path }} />
+);
+const ICONS = {
+    List: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
+    Analytics: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+    ChevronDown: '<path d="m6 9 6 6 6-6"/>',
+    Check: '<polyline points="20 6 9 17 4 12"/>',
+    LogOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+    Award: '<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>',
+    ArrowRight: '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
+    User: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
+};
+
+// --- Firebase Config ---
+const firebaseConfig = {
+    apiKey: "AIzaSyA3UqEDpP2Llt7ZkloqmlURGULdKEiWF3o",
+    authDomain: "yly-2026.firebaseapp.com",
+    projectId: "yly-2026",
+    storageBucket: "yly-2026.firebasestorage.app",
+    messagingSenderId: "599868603298",
+    appId: "1:599868603298:web:f66010961895c707cb10fb"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+// 5 Committees Only
+const COMMITTEES = ['HR', 'PR', 'OR', 'SM', 'Training'];
+
+// Gamification Score Map
+const SCORE_MAP = {
+    'submitted': 5, 'under_review': 5, 'approved': 20, 
+    'experiment': 30, 'measuring': 30, 'implemented': 50, 'standardized': 75, 'rejected': 0
+};
+
+// المراحل الحقيقية للكايزن
+const STAGES = [
+    { id: 'submitted', label: 'مُقدمة (جديدة)' },
+    { id: 'under_review', label: 'قيد المراجعة' },
+    { id: 'approved', label: 'مقبولة مبدئياً' },
+    { id: 'experiment', label: 'جاري التجربة' },
+    { id: 'measuring', label: 'قياس النتائج' },
+    { id: 'implemented', label: 'تم التنفيذ' },
+    { id: 'standardized', label: 'تعميم (Standard)' },
+    { id: 'rejected', label: 'مرفوضة' }
+];
+
+function AdminApp() {
+    const [user, setUser] = useState(null);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    const [activeTab, setActiveTab] = useState('list'); // list, analytics, profile
+    const [ideas, setIdeas] = useState([]);
+    const [toast, setToast] = useState(null);
+    const [filterStatus, setFilterStatus] = useState('all');
+
+    // Profile View State for Admin
+    const [viewProfileData, setViewProfileData] = useState(null);
+
+    // State for inline expanding and editing
+    const [expandedId, setExpandedId] = useState(null);
+    const [editData, setEditData] = useState({ status: '', kpi: '', duration: 'أسبوع', before: '', after: '' });
+    const [savingId, setSavingId] = useState(null);
+
+    const showToast = (msg, type='success') => { setToast({msg, type}); setTimeout(() => setToast(null), 3000); };
+
+    useEffect(() => {
+        // فرض بقاء تسجيل الدخول نشطاً دائماً في المتصفح
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+        const unsubAuth = auth.onAuthStateChanged(async (u) => {
+            if (u) {
+                try {
+                    await u.getIdToken(true); // تجديد رمز الأمان فور فتح المتصفح
+                    setUser(u);
+                } catch(e) {
+                    setUser(null);
+                }
+            } else {
+                setUser(null);
+            }
+            setLoading(false);
+        });
+        return () => unsubAuth();
+    }, []);
+
+    useEffect(() => {
+        if (!user) return;
+        const unsubIdeas = db.collection('ideas').orderBy('createdAt', 'desc').onSnapshot(snap => {
+            setIdeas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setLoading(false);
+        });
+        return () => unsubIdeas();
+    }, [user]);
+
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            await auth.signInWithEmailAndPassword(email.trim(), password);
+        } catch(err) {
+            showToast('بيانات الدخول غير صحيحة', 'error');
+        }
+        setLoading(false);
+    };
+
+    const toggleExpand = (idea) => {
+        if (expandedId === idea.id) {
+            setExpandedId(null);
+        } else {
+            setExpandedId(idea.id);
+            setEditData({
+                status: idea.status || 'submitted',
+                kpi: idea.experimentPlan?.kpi || '',
+                duration: idea.experimentPlan?.duration || 'أسبوع',
+                before: idea.results?.before || '',
+                after: idea.results?.after || ''
+            });
+        }
+    };
+
+    const handleSave = async (ideaId) => {
+        setSavingId(ideaId);
+        try {
+            // تجديد جلسة الأدمن والتأكد من صلاحية التوكن فوراً قبل الإرسال
+            if (!auth.currentUser) {
+                showToast('انتهت الجلسة، برجاء تسجيل الدخول مجدداً', 'error');
+                setUser(null);
+                setSavingId(null);
+                return;
+            }
+            await auth.currentUser.getIdToken(true); // إجبار التجديد الفوري
+
+            let updatePayload = { status: editData.status };
+
+            // Validation for Experiment
+            if (editData.status === 'experiment') {
+                if(!editData.kpi.trim()) {
+                    showToast('برجاء كتابة مؤشر القياس (KPI)', 'error');
+                    setSavingId(null);
+                    return;
+                }
+                updatePayload.experimentPlan = { kpi: editData.kpi.trim(), duration: editData.duration };
+            }
+
+            // Validation for Implemented
+            if (editData.status === 'implemented' || editData.status === 'standardized') {
+                if(!editData.before || !editData.after) {
+                    showToast('برجاء إدخال أرقام القياس (قبل وبعد)', 'error');
+                    setSavingId(null);
+                    return;
+                }
+                const b = parseFloat(editData.before);
+                const a = parseFloat(editData.after);
+                const improvement = (((b - a) / b) * 100).toFixed(1);
+                updatePayload.results = { before: b, after: a, improvementPercentage: improvement };
+            }
+
+            await db.collection('ideas').doc(ideaId).update(updatePayload);
+            showToast('تم تحديث مسار الفكرة بنجاح');
+            setExpandedId(null); // Close the card
+        } catch (e) {
+            console.error("Save Error:", e);
+            showToast('حدث خطأ أثناء الحفظ، تحقق من الاتصال', 'error');
+        } finally {
+            setSavingId(null);
+        }
+    };
+
+    const deleteIdea = async (id) => {
+        if(!window.confirm('هل أنت متأكد من الحذف النهائي لهذه الفكرة؟')) return;
+        try {
+            if (auth.currentUser) {
+                await auth.currentUser.getIdToken(true); // تجديد التوكن قبل الحذف
+            }
+            await db.collection('ideas').doc(id).delete();
+            showToast('تم حذف الفكرة بنجاح');
+        } catch(e) {
+            console.error("Delete Error:", e);
+            showToast('حدث خطأ أثناء الحذف', 'error');
+        }
+    };
+
+    // Open Profile View for Admin
+    const openMemberProfile = async (uid, fallbackName, fallbackAvatar, fallbackComm) => {
+        setViewProfileData({
+            name: fallbackName,
+            uid: uid,
+            avatar: fallbackAvatar,
+            committee: fallbackComm,
+            phone: 'جاري التحميل...',
+            email: 'جاري التحميل...'
+        });
+        setActiveTab('profile');
+
+        try {
+            const userDoc = await db.collection('users').doc(uid).get();
+            if (userDoc.exists) {
+                const d = userDoc.data();
+                setViewProfileData({
+                    name: d.name || fallbackName,
+                    uid: uid,
+                    avatar: d.avatar || fallbackAvatar,
+                    committee: d.committee || fallbackComm,
+                    phone: d.phone || 'غير مسجل',
+                    email: d.email || 'غير مسجل'
+                });
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const filteredIdeas = filterStatus === 'all' ? ideas : ideas.filter(i => i.status === filterStatus);
+
+    // Analytics Calculations
+    const stats = useMemo(() => {
+        const total = ideas.length || 1;
+        const implemented = ideas.filter(i => i.status === 'implemented' || i.status === 'standardized').length;
+        const standardized = ideas.filter(i => i.status === 'standardized').length;
+
+        const committeeCount = {};
+        COMMITTEES.forEach(c => committeeCount[c] = 0);
+        ideas.forEach(i => { 
+            const comm = i.committee || i.authorCommittee;
+            if(committeeCount[comm] !== undefined) committeeCount[comm]++; 
+        });
+
+        return {
+            total: ideas.length,
+            implementationRate: ((implemented / total) * 100).toFixed(0),
+            standardizationRate: ((standardized / total) * 100).toFixed(0),
+            committeeCount
+        };
+    }, [ideas]);
+
+    // حساب بطل كل لجنة (الأول في النقاط من كل لجنة)
+    const topPerCommittee = useMemo(() => {
+        const userStats = {};
+
+        ideas.forEach(idea => {
+            const uid = idea.authorId;
+            if (!uid) return;
+
+            const points = SCORE_MAP[idea.status] || 0;
+            const ideaTimestamp = idea.createdAt?.seconds || (Date.now() / 1000);
+            // تحديد لجنة العضو الحقيقية
+            const memberCommittee = idea.authorCommittee || 'HR';
+
+            if (!userStats[uid]) {
+                userStats[uid] = {
+                    uid: uid,
+                    name: idea.author || 'عضو YLY',
+                    avatar: idea.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(idea.author || 'YLY')}&backgroundColor=002060,E30613`,
+                    committee: memberCommittee,
+                    score: 0,
+                    earliestTimestamp: ideaTimestamp // لتحديد الأقدم
+                };
+            }
+
+            // جمع إجمالي نقاط العضو
+            userStats[uid].score += points;
+
+            // حفظ تاريخ أقدم فكرة طرحها العضو
+            if (ideaTimestamp < userStats[uid].earliestTimestamp) {
+                userStats[uid].earliestTimestamp = ideaTimestamp;
+            }
+
+            // تثبيت لجنة العضو الصحيحة
+            if (idea.authorCommittee) {
+                userStats[uid].committee = idea.authorCommittee;
+            }
+        });
+
+        const champions = [];
+
+        // المرور على اللجان الخمسة واختيار الأول فقط
+        COMMITTEES.forEach(comm => {
+            const committeeMembers = Object.values(userStats).filter(u => u.committee === comm);
+
+            if (committeeMembers.length > 0) {
+                committeeMembers.sort((a, b) => {
+                    // 1. الترتيب بالأعلى نقاطاً أولاً
+                    if (b.score !== a.score) {
+                        return b.score - a.score;
+                    }
+                    // 2. في حال التساوي، الأقدم تسجيلاً / طرحاً للفكرة يفوز
+                    return a.earliestTimestamp - b.earliestTimestamp;
+                });
+
+                // أخذ المتصدر الحقيقي للجنة
+                champions.push({ ...committeeMembers[0], committeeName: comm });
+            }
+        });
+
+        return champions;
+    }, [ideas]);
+
+    const getStatusColor = (status) => {
+        if(status === 'standardized') return 'bg-purple-100 text-purple-700';
+        if(status === 'implemented') return 'bg-emerald-100 text-emerald-700';
+        if(status === 'experiment' || status === 'measuring') return 'bg-blue-100 text-blue-700';
+        if(status === 'approved') return 'bg-amber-100 text-amber-700';
+        if(status === 'rejected') return 'bg-red-100 text-red-700';
+        return 'bg-slate-100 text-slate-600';
+    };
+
+    if (!user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-4 bg-[#001845]">
+                <form onSubmit={handleLogin} className="bg-white p-6 rounded-3xl w-full max-w-[320px] shadow-2xl border border-white/10 animate-fade-in">
+                    <div className="flex justify-center mb-2">
+                        <div className="w-12 h-12 rounded-full overflow-hidden shadow-xs ring-1 ring-slate-200 bg-[#001845]">
+                            <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
+                        </div>
+                    </div>
+
+                    <h1 className="text-base font-black text-[#002060] text-center mb-0.5">إدارة كايزن YLY</h1>
+                    <p className="text-[10px] font-bold text-slate-400 text-center mb-4">خاص بقادة الفرق والإدارة فقط</p>
+
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-[9px] font-black text-slate-600 block mb-1">البريد الإلكتروني</label>
+                            <input 
+                                type="email" 
+                                required 
+                                value={email} 
+                                onChange={e=>setEmail(e.target.value)} 
+                                placeholder="admin@example.com"
+                                className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-navy focus:border-[#002060] placeholder-slate-300" 
+                                dir="ltr" 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-black text-slate-600 block mb-1">كلمة المرور</label>
+                            <input 
+                                type="password" 
+                                required 
+                                value={password} 
+                                onChange={e=>setPassword(e.target.value)} 
+                                placeholder="••••••••"
+                                className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-navy focus:border-[#002060] placeholder-slate-300" 
+                            />
+                        </div>
+                        <div className="pt-1">
+                            <button 
+                                type="submit" 
+                                disabled={loading} 
+                                className="w-full bg-[#E30613] hover:bg-red-700 text-white font-bold py-2.5 rounded-xl transition-colors shadow-sm flex justify-center items-center text-xs active:scale-[0.99]"
+                            >
+                                {loading ? <span className="spinner"></span> : 'تسجيل الدخول'}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen flex flex-col bg-[#F4F7FB]">
+            {/* Toast */}
+            {toast && (
+                <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full text-white text-xs font-bold shadow-lg animate-fade-in ${toast.type==='error'?'bg-red-500':'bg-navy'}`}>
+                    {toast.msg}
+                </div>
+            )}
+
+            {/* Navbar */}
+            <header className="bg-white px-4 md:px-6 py-3 flex justify-between items-center shadow-sm z-10 border-b border-slate-200 sticky top-0">
+                {activeTab === 'profile' ? (
+                    <button onClick={() => setActiveTab('analytics')} className="flex items-center gap-1.5 text-navy font-bold text-xs bg-slate-100 px-3 py-1.5 rounded-full hover:bg-slate-200 transition-colors">
+                        <Icon path={ICONS.ArrowRight} size={14}/> عودة للإحصائيات
+                    </button>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-[#001845] shrink-0">
+                            <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
+                        </div>
+                        <div>
+                            <h1 className="font-black text-navy text-sm md:text-base leading-none">إدارة كايزن</h1>
+                            <span className="text-[9px] font-bold text-ylyred block mt-0.5">YLY Kaizen OS</span>
+                        </div>
+                    </div>
+                )}
+
+                <button onClick={() => auth.signOut()} className="text-[10px] font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 flex items-center gap-1">
+                    <Icon path={ICONS.LogOut} size={14}/> خروج
+                </button>
+            </header>
+
+            {/* Tabs (Hidden when viewing profile) */}
+            {activeTab !== 'profile' && (
+                <div className="bg-white border-b border-slate-200 px-4 py-2 flex gap-2 overflow-x-auto hide-scroll">
+                    <button onClick={()=>setActiveTab('list')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors ${activeTab==='list'?'bg-navy text-white':'bg-slate-50 text-slate-600'}`}>
+                        <Icon path={ICONS.List} size={16}/> قائمة الأفكار
+                    </button>
+                    <button onClick={()=>setActiveTab('analytics')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors ${activeTab==='analytics'?'bg-navy text-white':'bg-slate-50 text-slate-600'}`}>
+                        <Icon path={ICONS.Analytics} size={16}/> الإحصائيات والأداء
+                    </button>
+                </div>
+            )}
+
+            {/* Main Area */}
+            <main className="flex-1 p-4 md:p-6 max-w-4xl mx-auto w-full">
+
+                {/* 1. LIST VIEW */}
+                {activeTab === 'list' && (
+                    <div className="animate-fade-in space-y-4">
+
+                        {/* Filter Bar */}
+                        <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex items-center">
+                            <span className="text-[10px] font-bold text-slate-400 px-3 hidden sm:block">تصفية حسب الحالة:</span>
+                            <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="flex-1 bg-transparent text-xs font-bold text-navy outline-none px-2 py-1">
+                                <option value="all">عرض جميع الأفكار ({ideas.length})</option>
+                                {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                            </select>
+                        </div>
+
+                        {loading && <div className="text-center mt-10"><span className="spinner text-navy"></span></div>}
+                        {!loading && filteredIdeas.length === 0 && (
+                            <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
+                                <p className="text-xs font-bold text-slate-400">لا توجد أفكار متطابقة مع البحث</p>
+                            </div>
+                        )}
+
+                        {/* Ideas List */}
+                        <div className="space-y-3">
+                            {filteredIdeas.map(idea => {
+                                const isExpanded = expandedId === idea.id;
+                                const stageLabel = STAGES.find(s => s.id === idea.status)?.label || 'غير محدد';
+
+                                return (
+                                    <div key={idea.id} className={`bg-white rounded-2xl border transition-all duration-300 ${isExpanded ? 'border-navy shadow-md' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
+
+                                        {/* Card Header */}
+                                        <div onClick={() => toggleExpand(idea)} className="p-4 cursor-pointer flex justify-between items-center gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-bold text-navy text-sm truncate mb-1">{idea.title}</h3>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-slate-500">{idea.author}</span>
+                                                    <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                                    <span className="text-[9px] font-bold text-ylyred bg-red-50 px-1.5 py-0.5 rounded">اللجنة المعنية: {idea.committee || idea.authorCommittee}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2 shrink-0">
+                                                <span className={`px-2 py-1 rounded text-[9px] font-bold ${getStatusColor(idea.status)}`}>{stageLabel}</span>
+                                                <Icon path={ICONS.ChevronDown} size={16} className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-180 text-navy' : ''}`} />
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Body */}
+                                        {isExpanded && (
+                                            <div className="p-4 pt-0 border-t border-slate-100 animate-fade-in">
+
+                                                {/* Read-Only Info */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 my-4">
+                                                    <div className="bg-red-50/50 p-3 rounded-xl border border-red-100">
+                                                        <span className="text-[10px] font-black text-ylyred block mb-1">المشكلة الحالية:</span>
+                                                        <p className="text-xs text-slate-700 font-medium leading-relaxed">{idea.problem}</p>
+                                                    </div>
+                                                    <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                                                        <span className="text-[10px] font-black text-blue-600 block mb-1">الحل المقترح (الكايزن):</span>
+                                                        <p className="text-xs text-slate-700 font-medium leading-relaxed">{idea.solution}</p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Action Form */}
+                                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-navy block mb-1.5">تغيير مرحلة الفكرة (Status)</label>
+                                                        <select value={editData.status} onChange={e=>setEditData({...editData, status: e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-lg text-xs font-bold text-navy">
+                                                            {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Dynamic Inputs Based on Status */}
+                                                    {editData.status === 'experiment' && (
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg animate-fade-in">
+                                                            <div>
+                                                                <label className="text-[10px] font-black text-orange-700 block mb-1">مؤشر القياس (KPI) <span className="text-red-500">*</span></label>
+                                                                <input type="text" value={editData.kpi} onChange={e=>setEditData({...editData, kpi: e.target.value})} placeholder="مثال: وقت التنفيذ بالدقائق" className="w-full bg-white border border-orange-200 px-3 py-2 rounded-lg text-xs font-bold" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[10px] font-black text-orange-700 block mb-1">مدة التجربة</label>
+                                                                <select value={editData.duration} onChange={e=>setEditData({...editData, duration: e.target.value})} className="w-full bg-white border border-orange-200 px-3 py-2 rounded-lg text-xs font-bold">
+                                                                    <option value="أسبوع">أسبوع</option>
+                                                                    <option value="أسبوعين">أسبوعين</option>
+                                                                    <option value="شهر">شهر</option>
+                                                                    <option value="خلال الإيفنت">خلال الإيفنت القادم</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {(editData.status === 'implemented' || editData.status === 'standardized') && (
+                                                        <div className="grid grid-cols-2 gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg animate-fade-in">
+                                                            <div>
+                                                                <label className="text-[10px] font-black text-emerald-700 block mb-1">الرقم قبل (Before) <span className="text-red-500">*</span></label>
+                                                                <input type="number" value={editData.before} onChange={e=>setEditData({...editData, before: e.target.value})} placeholder="مثال: 20" className="w-full bg-white border border-emerald-200 px-3 py-2 rounded-lg text-xs font-bold" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[10px] font-black text-emerald-700 block mb-1">الرقم بعد (After) <span className="text-red-500">*</span></label>
+                                                                <input type="number" value={editData.after} onChange={e=>setEditData({...editData, after: e.target.value})} placeholder="مثال: 8" className="w-full bg-white border border-emerald-200 px-3 py-2 rounded-lg text-xs font-bold" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex justify-between items-center pt-2">
+                                                        <button onClick={() => deleteIdea(idea.id)} className="text-[10px] font-bold text-red-500 hover:underline">حذف الفكرة نهائياً</button>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => setExpandedId(null)} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-lg">إلغاء</button>
+                                                            <button onClick={() => handleSave(idea.id)} disabled={savingId === idea.id} className="px-6 py-2 bg-navy text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5">
+                                                                {savingId === idea.id ? <span className="spinner"></span> : <><Icon path={ICONS.Check} size={14}/> حفظ التعديل</>}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* 2. ANALYTICS VIEW */}
+                {activeTab === 'analytics' && (
+                    <div className="animate-fade-in space-y-4">
+                        <h2 className="text-lg font-black text-navy mb-4">مؤشرات الأداء (KPIs)</h2>
+
+                        {/* Top Stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 text-center">
+                                <p className="text-[10px] font-bold text-slate-500 mb-1">إجمالي الأفكار</p>
+                                <p className="text-3xl font-black text-navy">{stats.total}</p>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-200 text-center bg-emerald-50/30">
+                                <p className="text-[10px] font-bold text-emerald-700 mb-1">نسبة التنفيذ الإجمالية</p>
+                                <p className="text-3xl font-black text-emerald-600">{stats.implementationRate}%</p>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-200 text-center bg-purple-50/30">
+                                <p className="text-[10px] font-bold text-purple-700 mb-1">نسبة التعميم (Standard)</p>
+                                <p className="text-3xl font-black text-purple-600">{stats.standardizationRate}%</p>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-orange-200 text-center bg-orange-50/30">
+                                <p className="text-[10px] font-bold text-orange-700 mb-1">أفكار قيد التجربة/القياس</p>
+                                <p className="text-3xl font-black text-orange-500">{ideas.filter(i=>i.status==='experiment' || i.status==='measuring').length}</p>
+                            </div>
+                        </div>
+
+                        {/* Committees Performance */}
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mt-4">
+                            <h3 className="text-sm font-black text-navy mb-4 border-b border-slate-100 pb-2">مشاركة اللجان (الأفكار المقدمة)</h3>
+                            <div className="space-y-4">
+                                {Object.entries(stats.committeeCount).sort((a,b)=>b[1]-a[1]).map(([committee, count]) => {
+                                    const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
+                                    return (
+                                        <div key={committee} className="flex items-center gap-3">
+                                            <span className="w-16 text-xs font-bold text-slate-700 shrink-0">{committee}</span>
+                                            <div className="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                                <div className="bg-ylyred h-full rounded-full transition-all duration-1000" style={{width: `${percentage}%`}}></div>
+                                            </div>
+                                            <span className="w-8 text-xs font-black text-navy text-left">{count}</span>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        {/* الحاوية الجديدة: أبطال اللجان (المتصدر من كل لجنة) */}
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mt-4">
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 mb-3">
+                                <Icon path={ICONS.Award} size={18} className="text-yellow-500" />
+                                <h3 className="text-sm font-black text-navy">أبطال اللجان (المتصدر من كل لجنة)</h3>
+                            </div>
+
+                            {topPerCommittee.length === 0 ? (
+                                <p className="text-center text-xs font-bold text-slate-400 py-4">لا توجد بيانات للأبطال حتى الآن</p>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    {topPerCommittee.map((champ) => (
+                                        <div 
+                                            key={champ.committeeName} 
+                                            onClick={() => openMemberProfile(champ.uid, champ.name, champ.avatar, champ.committee)}
+                                            className="bg-slate-50/70 hover:bg-blue-50/50 border border-slate-200/80 hover:border-navy p-3 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] shadow-xs"
+                                        >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                {/* Honorary Circular Frame */}
+                                                <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-yellow-500 via-amber-200 to-yellow-600 shadow-xs shrink-0">
+                                                    <img src={champ.avatar} className="w-full h-full rounded-full object-cover bg-white" alt="" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <h4 className="font-bold text-slate-900 text-xs truncate">{champ.name}</h4>
+                                                    <span className="text-[9px] font-black text-ylyred bg-red-50 px-1.5 py-0.2 rounded inline-block mt-0.5">
+                                                        لجنة: {champ.committeeName}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="text-left bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100 shrink-0">
+                                                <span className="text-xs font-black text-emerald-600">{champ.score}</span>
+                                                <span className="text-[8px] font-bold text-emerald-500 block leading-none">نقطة</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                    </div>
+                )}
+
+                {/* 3. MEMBER PROFILE VIEW FOR ADMIN */}
+                {activeTab === 'profile' && viewProfileData && (
+                    <div className="max-w-md mx-auto animate-fade-in">
+                        <div className="bg-white rounded-3xl p-6 text-center border border-slate-200 shadow-md mt-4 relative">
+                            <img src={viewProfileData.avatar} className="w-20 h-20 mx-auto -mt-12 mb-3 rounded-full border-4 border-white shadow-md bg-slate-100 object-cover" alt="" />
+                            <h2 className="text-base font-black text-navy mb-1">{viewProfileData.name}</h2>
+                            <span className="inline-block px-3 py-1 bg-red-50 text-ylyred text-[10px] font-black rounded-lg border border-red-100 mb-4">
+                                لجنة: {viewProfileData.committee}
+                            </span>
+
+                            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 mb-4 text-right space-y-2.5">
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-slate-400 font-bold">رقم الهاتف:</span>
+                                    <span className="font-bold text-slate-700" dir="ltr">{viewProfileData.phone ? `+20 ${viewProfileData.phone}` : 'غير مسجل'}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-slate-400 font-bold">البريد الإلكتروني:</span>
+                                    <span className="font-bold text-slate-700 truncate max-w-[200px]" dir="ltr">{viewProfileData.email || 'غير مسجل'}</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
+                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                    <span className="text-[10px] text-slate-400 font-bold block mb-1">الأفكار المطروحة</span>
+                                    <p className="text-lg font-black text-navy">{ideas.filter(i => i.authorId === viewProfileData.uid).length}</p>
+                                </div>
+                                <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+                                    <span className="text-[10px] text-emerald-600 font-bold block mb-1">نقاط التأثير</span>
+                                    <p className="text-lg font-black text-emerald-700">{
+                                        ideas.filter(i => i.authorId === viewProfileData.uid).reduce((sum, idea) => sum + (SCORE_MAP[idea.status] || 0), 0)
+                                    }</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+            </main>
+        </div>
+    );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<AdminApp />);
