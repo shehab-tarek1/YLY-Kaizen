@@ -734,20 +734,20 @@
                                     </div>
                                 </div>
 
-                                {/* Search & Filter Bar */}
-                                <div className="bg-[#001845] p-2.5 rounded-2xl border border-blue-900/50 shadow-md mb-2 space-y-2">
+                                <!-- Search & Filter Bar (Fixed Z-Index + Cancel Filter Button) -->
+                                <div className="relative z-30 bg-[#001845] p-2.5 rounded-2xl border border-blue-900/50 shadow-md mb-2 space-y-2">
                                     <div className="flex items-center gap-2">
-                                        <div className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 flex items-center gap-2 focus-within:bg-white focus-within:border-white transition-all group">
-                                            <Search size={16} className="text-blue-200 group-focus-within:text-[#002060] shrink-0" />
+                                        <div className="flex-1 bg-white border border-transparent rounded-xl px-3 py-2 flex items-center gap-2 shadow-xs">
+                                            <Search size={16} className="text-[#002060] shrink-0" />
                                             <input
                                                 type="text"
                                                 value={searchTerm}
                                                 onChange={e => setSearchTerm(e.target.value)}
                                                 placeholder="ابحث بالاسم أو العنوان أو الفكرة..."
-                                                className="bg-transparent w-full text-xs font-bold text-white group-focus-within:text-[#002060] placeholder-white/40 group-focus-within:placeholder-slate-400 outline-none"
+                                                className="bg-transparent w-full text-xs font-bold text-[#002060] placeholder-slate-400 outline-none"
                                             />
                                             {searchTerm && (
-                                                <button onClick={() => setSearchTerm('')} className="text-white/60 group-focus-within:text-slate-400 hover:text-white">
+                                                <button onClick={() => setSearchTerm('')} className="text-slate-400 hover:text-[#002060]">
                                                     <X size={14} />
                                                 </button>
                                             )}
@@ -768,36 +768,53 @@
 
                                     {/* Collapsible Filter Panel */}
                                     {isFilterOpen && (
-                                        <div className="pt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-2 animate-fade-in">
-                                            <div>
-                                                <span className="text-[9px] font-bold text-blue-200 block mb-1">المرحلة</span>
-                                                <CustomSelect
-                                                    value={STATUS_STAGES.find(s=>s.id===filterStatus)?.label || filterStatus}
-                                                    options={[{label: 'كل المراحل', value: 'الكل'}, ...STATUS_STAGES.map(s=>({label: s.label, value: s.id}))]}
-                                                    onChange={val => setFilterStatus(val)}
-                                                    colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
-                                                />
-                                            </div>
-                                            <div>
-                                                <span className="text-[9px] font-bold text-blue-200 block mb-1">اللجنة المعنية</span>
-                                                <CustomSelect
-                                                    value={filterCommittee}
-                                                    options={['الكل', ...COMMITTEES]}
-                                                    onChange={val => setFilterCommittee(val)}
-                                                    colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
-                                                />
-                                            </div>
-                                            <div>
-                                                <span className="text-[9px] font-bold text-blue-200 block mb-1">الترتيب الزمني</span>
-                                                <CustomSelect
-                                                    value={sortBy === 'newest' ? 'الأحدث أولاً' : 'الأقدم أولاً'}
-                                                    options={[
-                                                        {label: 'الأحدث أولاً', value: 'newest'},
-                                                        {label: 'الأقدم أولاً', value: 'oldest'}
-                                                    ]}
-                                                    onChange={val => setSortBy(val)}
-                                                    colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
-                                                />
+                                        <div className="pt-2 border-t border-white/10 space-y-2 animate-fade-in">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                <div>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-[9px] font-bold text-blue-200">المرحلة</span>
+                                                        {/* زر إلغاء الفلترة الصغير بالأحمر */}
+                                                        {(filterStatus !== 'الكل' || filterCommittee !== 'الكل' || sortBy !== 'newest') && (
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setFilterStatus('الكل');
+                                                                    setFilterCommittee('الكل');
+                                                                    setSortBy('newest');
+                                                                }}
+                                                                className="bg-ylyred hover:bg-red-700 text-white text-[8px] font-black px-2 py-0.5 rounded-md shadow-xs active:scale-95 transition-all"
+                                                            >
+                                                                إلغاء
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <CustomSelect
+                                                        value={STATUS_STAGES.find(s=>s.id===filterStatus)?.label || filterStatus}
+                                                        options={[{label: 'كل المراحل', value: 'الكل'}, ...STATUS_STAGES.map(s=>({label: s.label, value: s.id}))]}
+                                                        onChange={val => setFilterStatus(val)}
+                                                        colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <span className="text-[9px] font-bold text-blue-200 block mb-1">اللجنة المعنية</span>
+                                                    <CustomSelect
+                                                        value={filterCommittee}
+                                                        options={['الكل', ...COMMITTEES]}
+                                                        onChange={val => setFilterCommittee(val)}
+                                                        colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <span className="text-[9px] font-bold text-blue-200 block mb-1">الترتيب الزمني</span>
+                                                    <CustomSelect
+                                                        value={sortBy === 'newest' ? 'الأحدث أولاً' : 'الأقدم أولاً'}
+                                                        options={[
+                                                            {label: 'الأحدث أولاً', value: 'newest'},
+                                                            {label: 'الأقدم أولاً', value: 'oldest'}
+                                                        ]}
+                                                        onChange={val => setSortBy(val)}
+                                                        colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     )}
