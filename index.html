@@ -46,7 +46,7 @@
                     },
                     animation: {
                         'fade-in': 'fadeIn .2s ease-out both',
-                        'slide-up': 'slideUp .2s ease-out both',
+                        'slide-up': 'slideUp .25s ease-out both',
                         'pop-in': 'popIn .2s ease-out both',
                     }
                 }
@@ -136,7 +136,7 @@
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', 'https://api.cloudinary.com/v1_1/dsxrjmcxs/image/upload');
                 xhr.upload.onprogress = (e) => {
-                    if (e.lengthComputable) {
+                    if (e.lengthComputable && onProgress) {
                         const percent = Math.round((e.loaded / e.total) * 100);
                         onProgress(percent);
                     }
@@ -209,7 +209,7 @@
             const [activeTab, setActiveTab] = useState('home');
             const [selectedIdeaId, setSelectedIdeaId] = useState(null);
             const [toast, setToast] = useState(null);
-            const [fullScreenImage, setFullScreenImage] = useState(null); // Lightbox State
+            const [fullScreenImage, setFullScreenImage] = useState(null);
             
             // Comments & Upvotes
             const [newComment, setNewComment] = useState("");
@@ -230,9 +230,14 @@
             const [authLoading, setAuthLoading] = useState(false);
             const [authError, setAuthError] = useState('');
 
+            // Signup Photo
+            const [signupImageFile, setSignupImageFile] = useState(null);
+            const [signupImagePreview, setSignupImagePreview] = useState(null);
+            const signupFileInputRef = useRef(null);
+
             // Edit Profile
             const [isEditingProfile, setIsEditingProfile] = useState(false);
-            const [editProfileData, setEditProfileData] = useState({ name: '', phone: '', officialId: '', committee: 'HR', avatar: '' });
+            const [editProfileData, setEditProfileData] = useState({ name: '', phone: '', committee: 'HR', avatar: '' });
             const [isSavingProfile, setIsSavingProfile] = useState(false);
             const [uploadProgress, setUploadProgress] = useState(0);
             const [selectedImageFile, setSelectedImageFile] = useState(null);
@@ -259,7 +264,6 @@
                                 setEditProfileData({
                                     name: data.name || currentUser.displayName || '',
                                     phone: data.phone || '',
-                                    officialId: data.officialId || '',
                                     committee: data.committee || 'HR',
                                     avatar: data.avatar || getAvatar(currentUser.displayName)
                                 });
@@ -323,25 +327,37 @@
                         await auth.signInWithEmailAndPassword(fakeEmail, authData.password);
                         showToast('تم تسجيل الدخول بنجاح');
                     } else {
-                        const res = await auth.createUserWithEmailAndPassword(fakeEmail, authData.password);
                         const cleanName = authData.name.trim();
-                        const initialAvatar = getAvatar(cleanName);
-                        await res.user.updateProfile({ displayName: cleanName, photoURL: initialAvatar });
+                        let avatarUrl = getAvatar(cleanName);
+
+                        // Upload picture if chosen during registration
+                        if (signupImageFile) {
+                            try {
+                                avatarUrl = await uploadToCloudinary(signupImageFile);
+                            } catch(err) {
+                                console.warn('Could not upload custom image, using fallback avatar');
+                            }
+                        }
+
+                        const res = await auth.createUserWithEmailAndPassword(fakeEmail, authData.password);
+                        await res.user.updateProfile({ displayName: cleanName, photoURL: avatarUrl });
                         
                         const profileObj = {
                             name: cleanName,
                             phone: phone,
                             committee: authData.committee,
-                            avatar: initialAvatar,
+                            avatar: avatarUrl,
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
                         };
                         await db.collection('users').doc(res.user.uid).set(profileObj);
                         setUserProfile(profileObj);
-                        setEditProfileData({...profileObj, officialId: ''});
+                        setEditProfileData(profileObj);
                         showToast('تم إنشاء الحساب بنجاح');
                     }
                     setActiveTab('home');
                     setAuthData({ name: '', phone: '', password: '', committee: 'HR' });
+                    setSignupImageFile(null);
+                    setSignupImagePreview(null);
                 } catch (error) {
                     setAuthError('تأكد من صحة البيانات أو وجود الحساب.');
                 } finally {
@@ -353,7 +369,15 @@
                 const file = e.target.files[0];
                 if (file) {
                     setSelectedImageFile(file);
-                    setEditProfileData(prev => ({ ...prev, avatar: URL.createObjectURL(file) })); // Local preview
+                    setEditProfileData(prev => ({ ...prev, avatar: URL.createObjectURL(file) }));
+                }
+            };
+
+            const handleSignupImageSelect = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    setSignupImageFile(file);
+                    setSignupImagePreview(URL.createObjectURL(file));
                 }
             };
 
@@ -365,8 +389,6 @@
 
                 try {
                     let finalAvatarUrl = editProfileData.avatar;
-                    
-                    // Upload Image if selected
                     if (selectedImageFile) {
                         finalAvatarUrl = await uploadToCloudinary(selectedImageFile, setUploadProgress);
                     }
@@ -380,7 +402,6 @@
                     const updatedData = {
                         name: cleanName,
                         phone: cleanPhone,
-                        officialId: editProfileData.officialId.trim(),
                         committee: editProfileData.committee,
                         avatar: finalAvatarUrl,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -388,7 +409,7 @@
                     
                     await db.collection('users').doc(user.uid).set(updatedData, { merge: true });
 
-                    // Batch update ideas to reflect new avatar/name
+                    // Batch update ideas
                     const userIdeasSnapshot = await db.collection('ideas').where('authorId', '==', user.uid).get();
                     if (!userIdeasSnapshot.empty) {
                         const batch = db.batch();
@@ -402,7 +423,7 @@
                     if (viewProfileData) {
                         setViewProfileData({
                             ...viewProfileData, name: cleanName, committee: editProfileData.committee,
-                            officialId: editProfileData.officialId.trim(), phone: cleanPhone, avatar: finalAvatarUrl
+                            phone: cleanPhone, avatar: finalAvatarUrl
                         });
                     }
                     setIsEditingProfile(false);
@@ -453,17 +474,18 @@
                 try {
                     const authorName = user.displayName || userProfile?.name || "عضو YLY";
                     const authorAvatar = user.photoURL || userProfile?.avatar || getAvatar(authorName);
+                    
                     await db.collection('ideas').add({
                         title: newIdea.title.trim(),
                         problem: newIdea.problem.trim(),
                         solution: newIdea.solution.trim(),
-                        committee: newIdea.committee,
+                        committee: newIdea.committee, // اللجنة المعنية بالتطبيق
                         expectedImpact: newIdea.expectedImpact,
                         status: "submitted",
                         author: authorName,
                         authorId: user.uid,
                         avatar: authorAvatar,
-                        authorCommittee: userProfile?.committee || "عضو",
+                        authorCommittee: userProfile?.committee || "HR",
                         upvotes: 0,
                         upvoters: [],
                         timeAgo: new Date().toLocaleDateString('ar-EG'),
@@ -512,7 +534,6 @@
                 setIsEditingProfile(false);
                 setViewProfileData({
                     name, uid, avatar: avatar || getAvatar(name), committee: committee || "عضو",
-                    officialId: (user && uid === user.uid) ? (userProfile?.officialId || '') : '',
                     phone: (user && uid === user.uid) ? (userProfile?.phone || '') : ''
                 });
                 setActiveTab('profile');
@@ -525,7 +546,6 @@
 
             const selectedIdea = useMemo(() => ideas.find(i => i.id === selectedIdeaId), [ideas, selectedIdeaId]);
             
-            // تحديد متى يظهر البار السفلي
             const showBottomNav = ['home', 'leaderboard', 'library', 'profile'].includes(activeTab);
 
             const StatusPill = ({ status }) => {
@@ -567,8 +587,8 @@
                         </div>
                     )}
 
-                    {/* Top Header - Matching Bottom Header shape */}
-                    <header className="fixed top-0 left-0 right-0 bg-[#001845]/95 backdrop-blur-md z-40 shadow-sm border-b border-white/10 rounded-b-[28px]">
+                    {/* Top Header */}
+                    <header className="fixed top-0 left-0 right-0 bg-[#001845]/95 backdrop-blur-md z-40 shadow-sm border-b border-white/10 rounded-b-[24px]">
                         <div className="h-0.5 bg-[#E30613] w-full"></div>
                         <div className="px-4 py-2 flex items-center justify-between h-[52px]">
                             {!showBottomNav && activeTab !== 'home' ? (
@@ -601,13 +621,13 @@
                         </div>
                     </header>
 
-                    {/* Main Content Area - Padding adjusts based on active tab */}
+                    {/* Main Content Area */}
                     <main className={`flex-1 overflow-y-auto pt-[70px] px-3.5 hide-scroll relative z-10 
-                        ${showBottomNav ? 'pb-[70px]' : activeTab === 'idea-details' ? 'pb-0' : 'pb-6'}`}>
+                        ${showBottomNav ? 'pb-[80px]' : activeTab === 'idea-details' ? 'pb-0' : 'pb-6'}`}>
                         
                         {/* 1. KAIZEN BOARD */}
                         {activeTab === 'home' && (
-                            <div className="max-w-xl mx-auto space-y-3.5">
+                            <div className="max-w-xl mx-auto space-y-3.5 pb-10">
                                 
                                 {/* Welcome Card */}
                                 <div className="bg-[#001845] rounded-3xl p-5 text-white shadow-lg relative overflow-hidden mb-2 animate-fade-in border border-blue-900/50">
@@ -645,8 +665,9 @@
                                                             </div>
                                                             <div className="min-w-0" onClick={(e) => { e.stopPropagation(); openProfile(idea.author, idea.avatar, idea.authorCommittee, idea.authorId, e); }}>
                                                                 <h3 className="font-bold text-slate-900 text-xs truncate">{idea.author}</h3>
+                                                                {/* عرض اللجنة المعنية بالتطبيق بدقة */}
                                                                 <span className="text-[9px] font-bold text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-100/70 inline-block mt-0.5 truncate">
-                                                                    لجنة: {idea.authorCommittee}
+                                                                    اللجنة المعنية: {idea.committee}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -683,20 +704,22 @@
                                         </div>
                                     );
                                 })}
+                                {/* مساحة أمان سفلية */}
+                                <div className="h-6" aria-hidden="true"></div>
                             </div>
                         )}
 
                         {/* 2. IDEA DETAILS & COMMENTS */}
                         {activeTab === 'idea-details' && selectedIdea && (
                             <div className="flex flex-col relative max-w-xl mx-auto min-h-[calc(100vh-70px)]">
-                                <div className="flex-1 pb-20"> {/* Added pb-20 to ensure comments don't hide behind the input */}
+                                <div className="flex-1 pb-20">
                                     <article className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200/60 mb-4 animate-fade-in">
                                         <div className="flex justify-between items-start mb-4">
                                             <div className="flex items-center gap-2.5 min-w-0">
                                                 <img src={selectedIdea.avatar} onClick={() => setFullScreenImage(selectedIdea.avatar)} className="w-10 h-10 rounded-full border border-slate-200 object-cover cursor-pointer" alt="" />
                                                 <div className="min-w-0" onClick={() => openProfile(selectedIdea.author, selectedIdea.avatar, selectedIdea.authorCommittee, selectedIdea.authorId)}>
                                                     <h3 className="font-bold text-slate-900 text-sm truncate cursor-pointer">{selectedIdea.author}</h3>
-                                                    <span className="text-[10px] font-bold text-ylyred bg-red-50 px-1.5 py-0.5 rounded border border-red-100/70 inline-block mt-0.5">لجنة: {selectedIdea.authorCommittee}</span>
+                                                    <span className="text-[10px] font-bold text-ylyred bg-red-50 px-1.5 py-0.5 rounded border border-red-100/70 inline-block mt-0.5">اللجنة المعنية: {selectedIdea.committee}</span>
                                                 </div>
                                             </div>
                                             <StatusPill status={selectedIdea.status} />
@@ -783,7 +806,7 @@
                                     </div>
                                 </div>
                                 
-                                {/* Sticky Comment Input (Always visible at the very bottom since Bottom Nav is hidden here) */}
+                                {/* Sticky Comment Input */}
                                 <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 p-2.5 pb-safe z-30 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] rounded-t-[20px]">
                                     <div className="max-w-xl mx-auto flex items-center gap-2">
                                         <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => {if(e.key==='Enter') handleAddComment(selectedIdea.id)}} placeholder={user ? "اكتب تعليقاً..." : "سجل الدخول للتعليق"} disabled={!user || isCommenting} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:border-navy" />
@@ -795,7 +818,7 @@
                             </div>
                         )}
 
-                        {/* 3. ADD IDEA FORM (Compact Spacing) */}
+                        {/* 3. ADD IDEA FORM */}
                         {activeTab === 'add-idea' && (
                             <div className="animate-slide-up max-w-xl mx-auto pb-10">
                                 <h2 className="font-black text-navy text-lg mb-1 flex items-center gap-1.5"><Plus size={20}/> طرح فكرة كايزن</h2>
@@ -816,7 +839,7 @@
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 pt-1">
                                         <div>
-                                            <label className="text-[11px] font-black text-slate-700 block mb-1">اللجنة</label>
+                                            <label className="text-[11px] font-black text-slate-700 block mb-1">اللجنة المعنية بالتطبيق</label>
                                             <CustomSelect value={newIdea.committee} options={COMMITTEES} onChange={(val) => setNewIdea({...newIdea, committee: val})} />
                                         </div>
                                         <div>
@@ -833,26 +856,41 @@
                             </div>
                         )}
 
-                        {/* 4. LEADERBOARD */}
+                        {/* 4. LEADERBOARD (Commemorative Honorary Circular Frames) */}
                         {activeTab === 'leaderboard' && (
-                            <div className="animate-fade-in max-w-xl mx-auto">
+                            <div className="animate-fade-in max-w-xl mx-auto pb-10">
                                 <div className="bg-[#001845] rounded-3xl p-5 shadow-lg text-center text-white mb-4 border border-blue-900/50">
                                     <Award size={36} className="mx-auto text-yellow-400 mb-2" />
                                     <h2 className="text-lg font-black">أبطال الكايزن</h2>
                                     <p className="text-[10px] font-bold text-blue-200 mt-1">يتم احتساب النقاط بناءً على تأثير الفكرة ومراحل تنفيذها.</p>
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2.5">
                                     {topUsers.length === 0 && <p className="text-center text-xs font-bold text-slate-400 mt-10">لا يوجد أبطال بعد</p>}
                                     {topUsers.map((usr, idx) => (
-                                        <div key={idx} onClick={() => openProfile(usr.name, usr.avatar, usr.committee, usr.uid)} className="bg-white rounded-2xl p-3 flex items-center shadow-sm border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm mr-3 ${idx===0?'bg-yellow-100 text-yellow-600':idx===1?'bg-slate-200 text-slate-600':idx===2?'bg-orange-100 text-orange-600':'bg-blue-50 text-blue-600'}`}>
-                                                {idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':`#${idx + 1}`}
+                                        <div key={idx} onClick={() => openProfile(usr.name, usr.avatar, usr.committee, usr.uid)} className="bg-white rounded-2xl p-3 flex items-center shadow-sm border border-slate-100 cursor-pointer hover:bg-slate-50 transition-all active:scale-[0.99]">
+                                            
+                                            {/* Circular Commemorative Frame */}
+                                            <div className="relative mr-2 shrink-0">
+                                                <div className={`w-12 h-12 rounded-full p-[2.5px] ${
+                                                    idx === 0 ? 'bg-gradient-to-tr from-yellow-600 via-amber-300 to-yellow-500 shadow-md ring-2 ring-yellow-400/40' :
+                                                    idx === 1 ? 'bg-gradient-to-tr from-slate-500 via-slate-200 to-slate-400 shadow-sm ring-2 ring-slate-300/40' :
+                                                    idx === 2 ? 'bg-gradient-to-tr from-amber-800 via-amber-400 to-amber-700 shadow-sm ring-2 ring-amber-600/40' :
+                                                    'bg-gradient-to-tr from-[#001845] to-blue-400 p-[1.5px]'
+                                                }`}>
+                                                    <img src={usr.avatar} className="w-full h-full rounded-full object-cover bg-white" alt="" />
+                                                </div>
+                                                <span className={`absolute -bottom-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white border-2 border-white shadow-xs ${
+                                                    idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-slate-500' : idx === 2 ? 'bg-amber-700' : 'bg-[#002060]'
+                                                }`}>
+                                                    {idx + 1}
+                                                </span>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="font-bold text-slate-800 text-sm truncate">{usr.name}</h3>
-                                                <p className="text-[10px] text-slate-400 font-bold mt-0.5 truncate">{usr.committee}</p>
+
+                                            <div className="flex-1 min-w-0 pr-2">
+                                                <h3 className="font-bold text-slate-900 text-xs sm:text-sm truncate">{usr.name}</h3>
+                                                <p className="text-[10px] text-slate-400 font-bold mt-0.5 truncate">لجنة: {usr.committee}</p>
                                             </div>
-                                            <div className="text-left bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100 flex items-center gap-1">
+                                            <div className="text-left bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 flex items-center gap-1 shrink-0">
                                                 <span className="text-sm font-black text-emerald-600">{usr.score}</span>
                                                 <span className="text-[9px] font-bold text-emerald-500">نقطة</span>
                                             </div>
@@ -864,7 +902,7 @@
 
                         {/* 5. KNOWLEDGE LIBRARY (Standards) */}
                         {activeTab === 'library' && (
-                            <div className="animate-fade-in max-w-xl mx-auto space-y-3">
+                            <div className="animate-fade-in max-w-xl mx-auto space-y-3 pb-10">
                                 <div className="bg-[#001845] border border-blue-900/50 p-5 rounded-3xl mb-4 text-center text-white shadow-lg">
                                     <BookOpen size={32} className="text-blue-300 mx-auto mb-2" />
                                     <h2 className="font-black text-white text-base">مكتبة الكايزن المعتمدة</h2>
@@ -876,7 +914,7 @@
                                 {ideas.filter(i => i.status === 'standardized').map(idea => (
                                     <div key={idea.id} onClick={() => { setSelectedIdeaId(idea.id); setActiveTab('idea-details'); }} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 cursor-pointer hover:border-[#002060]">
                                         <h3 className="font-bold text-[#002060] text-sm leading-tight mb-1">{idea.title}</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold mb-3">{idea.authorCommittee}</p>
+                                        <p className="text-[10px] text-slate-400 font-bold mb-3">اللجنة: {idea.committee}</p>
                                         <div className="flex justify-between items-center bg-blue-50/50 rounded-xl p-2 text-[10px] font-bold">
                                             <span className="text-slate-500">التأثير المستهدف: {idea.expectedImpact}</span>
                                             <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">عرض الـ Standard</span>
@@ -903,11 +941,10 @@
                                         <>
                                             <img src={viewProfileData.avatar} onClick={() => setFullScreenImage(viewProfileData.avatar)} className="w-20 h-20 mx-auto -mt-10 mb-3 rounded-full border-2 border-white shadow-md bg-slate-100 object-cover cursor-pointer" alt="" />
                                             <h2 className="text-base font-black text-navy mb-1">{viewProfileData.name}</h2>
-                                            <span className="inline-block px-3 py-1 bg-red-50 text-ylyred text-[10px] font-bold rounded-lg border border-red-100/70 mb-4">{viewProfileData.committee}</span>
+                                            <span className="inline-block px-3 py-1 bg-red-50 text-ylyred text-[10px] font-bold rounded-lg border border-red-100/70 mb-4">لجنة: {viewProfileData.committee}</span>
                                             
                                             {user && viewProfileData.uid === user.uid && (
                                                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4 text-right space-y-2">
-                                                    <div className="flex justify-between text-xs"><span className="text-slate-400 font-bold">الرقم الرسمي:</span><span className="font-black text-slate-700">{userProfile?.officialId || 'غير مسجل'}</span></div>
                                                     <div className="flex justify-between text-xs"><span className="text-slate-400 font-bold">رقم الهاتف:</span><span className="font-bold text-slate-700" dir="ltr">+20 {userProfile?.phone}</span></div>
                                                 </div>
                                             )}
@@ -943,7 +980,6 @@
 
                                             <form onSubmit={handleUpdateProfile} className="space-y-3">
                                                 <div><label className="text-[10px] font-black text-slate-600 block mb-1">الاسم الرباعي</label><input type="text" required value={editProfileData.name} onChange={e=>setEditProfileData({...editProfileData, name: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold focus:border-navy" /></div>
-                                                <div><label className="text-[10px] font-black text-slate-600 block mb-1">الرقم الرسمي (اختياري)</label><input type="text" value={editProfileData.officialId} onChange={e=>setEditProfileData({...editProfileData, officialId: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold focus:border-navy" /></div>
                                                 <div><label className="text-[10px] font-black text-slate-600 block mb-1">رقم الهاتف</label><input type="tel" value={editProfileData.phone} onChange={e=>setEditProfileData({...editProfileData, phone: e.target.value.replace(/\D/g,'').slice(0,10)})} className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-left focus:border-navy" dir="ltr" /></div>
                                                 <div><label className="text-[10px] font-black text-slate-600 block mb-1">اللجنة</label><CustomSelect value={editProfileData.committee} options={COMMITTEES} onChange={(val) => setEditProfileData({...editProfileData, committee: val})} /></div>
                                                 <div className="flex gap-2 pt-4 mb-4">
@@ -959,15 +995,41 @@
                             </div>
                         )}
 
-                        {/* 7. AUTH (Login / Register - Compact Card) */}
+                        {/* 7. AUTH (Login / Register with Photo Upload) */}
                         {activeTab === 'auth' && (
-                            <div className="animate-fade-in max-w-[320px] mx-auto mt-6">
+                            <div className="animate-fade-in max-w-[320px] mx-auto mt-6 pb-10">
                                 <div className="bg-[#001845] p-5 rounded-3xl shadow-xl border border-blue-900/50">
-                                    <div className="text-center mb-4">
-                                        <div className="w-10 h-10 bg-white/10 text-white rounded-full flex items-center justify-center mx-auto mb-2 border border-white/20"><User size={18} /></div>
-                                        <h2 className="text-base font-black text-white">{isLoginView ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}</h2>
-                                    </div>
+                                    
+                                    {/* Avatar Upload for Signup */}
+                                    {!isLoginView ? (
+                                        <div className="flex flex-col items-center mb-3">
+                                            <div onClick={() => signupFileInputRef.current.click()} className="w-16 h-16 rounded-full border-2 border-white/40 bg-white/10 flex items-center justify-center cursor-pointer overflow-hidden relative group shadow-inner">
+                                                {signupImagePreview ? (
+                                                    <img src={signupImagePreview} className="w-full h-full object-cover" alt="" />
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center text-white/80">
+                                                        <Camera size={20} />
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Camera size={18} className="text-white" />
+                                                </div>
+                                            </div>
+                                            <span onClick={() => signupFileInputRef.current.click()} className="text-[10px] font-bold text-blue-200 mt-1 cursor-pointer hover:underline">
+                                                ارفع صورتك الآن
+                                            </span>
+                                            <input type="file" accept="image/*" ref={signupFileInputRef} onChange={handleSignupImageSelect} className="hidden" />
+                                            <h2 className="text-sm font-black text-white mt-1">إنشاء حساب جديد</h2>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center mb-4">
+                                            <div className="w-10 h-10 bg-white/10 text-white rounded-full flex items-center justify-center mx-auto mb-2 border border-white/20"><User size={18} /></div>
+                                            <h2 className="text-base font-black text-white">تسجيل الدخول</h2>
+                                        </div>
+                                    )}
+
                                     {authError && <div className="bg-red-500/20 border border-red-500/50 text-red-200 text-[10px] font-bold rounded-lg p-2 mb-3 text-center">{authError}</div>}
+                                    
                                     <form onSubmit={handleAuth} className="space-y-3">
                                         {!isLoginView && (
                                             <>
@@ -978,20 +1040,22 @@
                                         <div><input type="tel" required placeholder="رقم الهاتف (دون الصفر)" value={authData.phone} onChange={e=>setAuthData({...authData, phone: e.target.value.replace(/\D/g,'').slice(0,10)})} className="w-full bg-slate-50 border border-transparent px-3 py-2.5 rounded-xl text-xs font-bold text-navy focus:border-blue-400 text-left placeholder-slate-400" dir="ltr" /></div>
                                         <div><input type="password" required placeholder="كلمة المرور" value={authData.password} onChange={e=>setAuthData({...authData, password: e.target.value})} className="w-full bg-slate-50 border border-transparent px-3 py-2.5 rounded-xl text-xs font-bold text-navy focus:border-blue-400 placeholder-slate-400" /></div>
                                         <div className="pt-1">
-                                            <button type="submit" disabled={authLoading} className="w-full bg-ylyred hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow-sm flex justify-center">{authLoading ? <span className="spinner"></span> : (isLoginView ? 'دخول' : 'تسجيل حساب')}</button>
+                                            <button type="submit" disabled={authLoading} className="w-full bg-ylyred hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow-sm flex justify-center items-center">
+                                                {authLoading ? <span className="spinner"></span> : (isLoginView ? 'دخول' : 'تسجيل حساب')}
+                                            </button>
                                         </div>
                                     </form>
                                     <div className="mt-4 text-center border-t border-white/10 pt-3">
-                                        <button onClick={() => { setIsLoginView(!isLoginView); setAuthError(''); }} className="text-[10px] font-bold text-blue-200 hover:text-white transition-colors">{isLoginView ? 'عضو جديد؟ اضغط هنا للتسجيل' : 'لديك حساب؟ سجل دخولك'}</button>
+                                        <button onClick={() => { setIsLoginView(!isLoginView); setAuthError(''); setSignupImagePreview(null); setSignupImageFile(null); }} className="text-[10px] font-bold text-blue-200 hover:text-white transition-colors">{isLoginView ? 'عضو جديد؟ اضغط هنا للتسجيل' : 'لديك حساب؟ سجل دخولك'}</button>
                                     </div>
                                 </div>
                             </div>
                         )}
                     </main>
 
-                    {/* Fixed Bottom Navigation - Shows conditionally */}
+                    {/* Fixed Bottom Navigation */}
                     {showBottomNav && (
-                        <nav className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[28px] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] border-t border-slate-100 z-40 pb-safe pt-2 px-6 flex justify-between items-center h-[52px]">
+                        <nav className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[24px] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] border-t border-slate-100 z-40 pb-safe pt-2 px-6 flex justify-between items-center h-[52px]">
                             <button onClick={()=>setActiveTab('home')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${activeTab==='home'?'text-navy':'text-slate-400'}`}>
                                 <Home size={18} /> <span className="text-[8px] font-bold">الرئيسية</span>
                             </button>
