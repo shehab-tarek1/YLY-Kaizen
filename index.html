@@ -728,13 +728,13 @@
                                             <p className="text-2xl font-black text-white">{ideas.length}</p>
                                         </div>
                                         <div onClick={() => setActiveTab('library')} className="bg-gradient-to-br from-emerald-500/30 to-emerald-600/50 rounded-2xl p-3 border border-emerald-400/30 backdrop-blur-sm cursor-pointer active:scale-95 transition-transform shadow-sm">
-                                            <p className="text-[10px] text-emerald-100 font-bold mb-1">أفكار تعممت بنجاح</p>
+                                           <p className="text-[10px] text-emerald-100 font-bold mb-1">أفكار تعممت بنجاح</p>
                                             <p className="text-2xl font-black text-white">{ideas.filter(i => i.status === 'standardized').length}</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Search & Filter Bar (Fixed Z-Index + Cancel Filter Button) -->
+                                {/* Search & Filter Bar */}
                                 <div className="relative z-30 bg-[#001845] p-2.5 rounded-2xl border border-blue-900/50 shadow-md mb-2 space-y-2">
                                     <div className="flex items-center gap-2">
                                         <div className="flex-1 bg-white border border-transparent rounded-xl px-3 py-2 flex items-center gap-2 shadow-xs">
@@ -818,7 +818,7 @@
                                             </div>
                                         </div>
                                     )}
-                                </div>
+                                </div> 
 
                                 {!ideasLoaded && <div className="text-center mt-10"><span className="spinner text-navy"></span></div>}
                                 {ideasLoaded && filteredAndSortedIdeas.length === 0 && (
