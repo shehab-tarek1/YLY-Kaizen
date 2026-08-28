@@ -120,6 +120,8 @@
         const Target = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
         const Camera = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>;
         const X = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+        const Search = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+        const Filter = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
 
         // --- Firebase Config ---
         const firebaseConfig = {
@@ -187,13 +189,13 @@
                 <div className="relative w-full">
                     <div onClick={() => setIsOpen(!isOpen)} 
                          className={`w-full border px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer flex justify-between items-center transition-colors ${colorClass}`}>
-                        <span>{value || placeholder}</span>
-                        <ChevronDown size={16} className={`transition-transform duration-200 text-slate-400 ${isOpen ? 'rotate-180' : ''}`} />
+                        <span className="truncate">{value || placeholder}</span>
+                        <ChevronDown size={15} className={`transition-transform duration-200 text-slate-400 shrink-0 mr-1 ${isOpen ? 'rotate-180' : ''}`} />
                     </div>
                     {isOpen && (
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-xl z-50 overflow-hidden dropdown-enter">
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-xl z-50 overflow-hidden dropdown-enter max-h-48 overflow-y-auto">
                                 {options.map(opt => {
                                     const val = typeof opt === 'object' ? opt.value : opt;
                                     const lbl = typeof opt === 'object' ? opt.label : opt;
@@ -217,6 +219,14 @@
             const [toast, setToast] = useState(null);
             const [fullScreenImage, setFullScreenImage] = useState(null);
             
+            // Search & Filter State
+            const [searchTerm, setSearchTerm] = useState("");
+            const [debouncedSearch, setDebouncedSearch] = useState("");
+            const [filterStatus, setFilterStatus] = useState("الكل");
+            const [filterCommittee, setFilterCommittee] = useState("الكل");
+            const [sortBy, setSortBy] = useState("newest");
+            const [isFilterOpen, setIsFilterOpen] = useState(false);
+
             // Comments & Upvotes
             const [newComment, setNewComment] = useState("");
             const [isCommenting, setIsCommenting] = useState(false);
@@ -257,6 +267,14 @@
                 setToast({ message, type });
                 toastTimer.current = setTimeout(() => setToast(null), 2600);
             }, []);
+
+            // Debounce search input to prevent any typing lag
+            useEffect(() => {
+                const timer = setTimeout(() => {
+                    setDebouncedSearch(searchTerm);
+                }, 400);
+                return () => clearTimeout(timer);
+            }, [searchTerm]);
 
             useEffect(() => {
                 const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
@@ -299,6 +317,41 @@
                 return () => unsubscribe();
             }, []);
 
+            // Filtered & Sorted Ideas
+            const filteredAndSortedIdeas = useMemo(() => {
+                let result = [...ideas];
+
+                // 1. Search Query Filter
+                if (debouncedSearch.trim()) {
+                    const q = debouncedSearch.toLowerCase().trim();
+                    result = result.filter(i => 
+                        (i.title && i.title.toLowerCase().includes(q)) ||
+                        (i.author && i.author.toLowerCase().includes(q)) ||
+                        (i.problem && i.problem.toLowerCase().includes(q)) ||
+                        (i.solution && i.solution.toLowerCase().includes(q))
+                    );
+                }
+
+                // 2. Status Filter
+                if (filterStatus !== 'الكل') {
+                    result = result.filter(i => i.status === filterStatus);
+                }
+
+                // 3. Committee Filter
+                if (filterCommittee !== 'الكل') {
+                    result = result.filter(i => i.committee === filterCommittee);
+                }
+
+                // 4. Sorting
+                if (sortBy === 'oldest') {
+                    result.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                } else {
+                    result.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                }
+
+                return result;
+            }, [ideas, debouncedSearch, filterStatus, filterCommittee, sortBy]);
+
             const topUsers = useMemo(() => {
                 const userStats = {};
                 ideas.forEach(idea => {
@@ -337,7 +390,6 @@
                         const cleanName = authData.name.trim();
                         let avatarUrl = getAvatar(cleanName);
 
-                        // Upload picture if chosen during registration
                         if (signupImageFile) {
                             try {
                                 avatarUrl = await uploadToCloudinary(signupImageFile);
@@ -488,7 +540,7 @@
                         title: newIdea.title.trim(),
                         problem: newIdea.problem.trim(),
                         solution: newIdea.solution.trim(),
-                        committee: newIdea.committee, // اللجنة المعنية بالتطبيق
+                        committee: newIdea.committee,
                         expectedImpact: newIdea.expectedImpact,
                         status: "submitted",
                         author: authorName,
@@ -515,7 +567,6 @@
                 const commentText = newComment.trim();
                 if (!commentText || !user || isCommenting) return;
                 
-                // تفريغ الحقل فوراً لمنع التعليق
                 setNewComment("");
                 setIsCommenting(true);
 
@@ -536,22 +587,42 @@
                         commentsList: firebase.firestore.FieldValue.arrayUnion(newCommentObj)
                     });
                 } catch (err) {
-                    setNewComment(commentText); // استرجاع النص في حال فشل الاتصال
+                    setNewComment(commentText);
                     showToast('تعذر إرسال التعليق، تحقق من الاتصال', 'error');
                 } finally {
                     setIsCommenting(false);
                 }
             };
 
-            const openProfile = (name, avatar, committee, uid, e) => {
+            // Public Profile Visitor Logic
+            const openProfile = async (name, avatar, committee, uid, e) => {
                 if (e) e.stopPropagation();
                 setIsEditingProfile(false);
+                
+                // Show initial view immediately
                 setViewProfileData({
                     name, uid, avatar: avatar || getAvatar(name), committee: committee || "عضو",
-                    phone: (user && uid === user.uid) ? (userProfile?.phone || '') : '',
-                    email: (user && uid === user.uid) ? (userProfile?.email || '') : ''
+                    phone: '...', email: '...'
                 });
                 setActiveTab('profile');
+
+                // Fetch full public data (phone, email) from Firestore
+                try {
+                    const userDoc = await db.collection('users').doc(uid).get();
+                    if (userDoc.exists) {
+                        const d = userDoc.data();
+                        setViewProfileData({
+                            name: d.name || name,
+                            uid,
+                            avatar: d.avatar || avatar || getAvatar(name),
+                            committee: d.committee || committee || "عضو",
+                            phone: d.phone || 'غير مسجل',
+                            email: d.email || 'غير مسجل'
+                        });
+                    }
+                } catch(err) {
+                    console.error(err);
+                }
             };
 
             const requireAuth = (nextTab) => {
@@ -561,7 +632,9 @@
 
             const selectedIdea = useMemo(() => ideas.find(i => i.id === selectedIdeaId), [ideas, selectedIdeaId]);
             
-            const showBottomNav = ['home', 'leaderboard', 'library', 'profile'].includes(activeTab);
+            // Show bottom nav on main pages, hide when viewing other users' profiles or details
+            const isVisitingOtherProfile = activeTab === 'profile' && viewProfileData && (!user || viewProfileData.uid !== user?.uid);
+            const showBottomNav = ['home', 'leaderboard', 'library'].includes(activeTab) || (activeTab === 'profile' && !isVisitingOtherProfile);
 
             const StatusPill = ({ status }) => {
                 const stage = STATUS_STAGES.find(s => s.id === status) || STATUS_STAGES[0];
@@ -606,7 +679,7 @@
                     <header className="fixed top-0 left-0 right-0 bg-[#001845]/95 backdrop-blur-md z-40 shadow-sm border-b border-white/10 rounded-b-[24px]">
                         <div className="h-0.5 bg-[#E30613] w-full"></div>
                         <div className="px-4 py-2 flex items-center justify-between h-[52px]">
-                            {!showBottomNav && activeTab !== 'home' ? (
+                            {(activeTab === 'idea-details' || activeTab === 'add-idea' || activeTab === 'auth' || isVisitingOtherProfile) ? (
                                 <button onClick={() => setActiveTab('home')} className="flex items-center gap-2 text-white font-bold text-xs bg-white/10 px-3 py-1.5 rounded-full hover:bg-white/20 transition-colors">
                                     <ArrowRight size={14} /> عودة
                                 </button>
@@ -661,13 +734,82 @@
                                     </div>
                                 </div>
 
+                                {/* Search & Filter Bar */}
+                                <div className="bg-[#001845] p-2.5 rounded-2xl border border-blue-900/50 shadow-md mb-2 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 flex items-center gap-2 focus-within:bg-white focus-within:border-white transition-all group">
+                                            <Search size={16} className="text-blue-200 group-focus-within:text-[#002060] shrink-0" />
+                                            <input
+                                                type="text"
+                                                value={searchTerm}
+                                                onChange={e => setSearchTerm(e.target.value)}
+                                                placeholder="ابحث بالاسم أو العنوان أو الفكرة..."
+                                                className="bg-transparent w-full text-xs font-bold text-white group-focus-within:text-[#002060] placeholder-white/40 group-focus-within:placeholder-slate-400 outline-none"
+                                            />
+                                            {searchTerm && (
+                                                <button onClick={() => setSearchTerm('')} className="text-white/60 group-focus-within:text-slate-400 hover:text-white">
+                                                    <X size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all shrink-0 ${
+                                                isFilterOpen || filterStatus !== 'الكل' || filterCommittee !== 'الكل' || sortBy !== 'newest'
+                                                    ? 'bg-ylyred border-ylyred text-white shadow-sm'
+                                                    : 'bg-white/10 border-white/15 text-blue-200 hover:bg-white/20'
+                                            }`}
+                                            title="خيارات الفلترة"
+                                        >
+                                            <Filter size={16} />
+                                        </button>
+                                    </div>
+
+                                    {/* Collapsible Filter Panel */}
+                                    {isFilterOpen && (
+                                        <div className="pt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-2 animate-fade-in">
+                                            <div>
+                                                <span className="text-[9px] font-bold text-blue-200 block mb-1">المرحلة</span>
+                                                <CustomSelect
+                                                    value={STATUS_STAGES.find(s=>s.id===filterStatus)?.label || filterStatus}
+                                                    options={[{label: 'كل المراحل', value: 'الكل'}, ...STATUS_STAGES.map(s=>({label: s.label, value: s.id}))]}
+                                                    onChange={val => setFilterStatus(val)}
+                                                    colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
+                                                />
+                                            </div>
+                                            <div>
+                                                <span className="text-[9px] font-bold text-blue-200 block mb-1">اللجنة المعنية</span>
+                                                <CustomSelect
+                                                    value={filterCommittee}
+                                                    options={['الكل', ...COMMITTEES]}
+                                                    onChange={val => setFilterCommittee(val)}
+                                                    colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
+                                                />
+                                            </div>
+                                            <div>
+                                                <span className="text-[9px] font-bold text-blue-200 block mb-1">الترتيب الزمني</span>
+                                                <CustomSelect
+                                                    value={sortBy === 'newest' ? 'الأحدث أولاً' : 'الأقدم أولاً'}
+                                                    options={[
+                                                        {label: 'الأحدث أولاً', value: 'newest'},
+                                                        {label: 'الأقدم أولاً', value: 'oldest'}
+                                                    ]}
+                                                    onChange={val => setSortBy(val)}
+                                                    colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {!ideasLoaded && <div className="text-center mt-10"><span className="spinner text-navy"></span></div>}
-                                {ideasLoaded && ideas.length === 0 && (
+                                {ideasLoaded && filteredAndSortedIdeas.length === 0 && (
                                     <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
-                                        <p className="text-xs font-bold text-slate-400">لا توجد أفكار مطروحة حالياً</p>
+                                        <p className="text-xs font-bold text-slate-400">لا توجد أفكار مطابقة لبحثك</p>
                                     </div>
                                 )}
-                                {ideas.map(idea => {
+                                {filteredAndSortedIdeas.map(idea => {
                                     const isUpvoted = user && (idea.upvoters || []).includes(user.uid);
                                     return (
                                         <div key={idea.id} className="animate-slide-up p-[1px] rounded-[17px] bg-gradient-to-br from-[#001845] via-[#002060] to-blue-300/50 shadow-sm cursor-pointer active:scale-[0.99] transition-transform">
@@ -936,7 +1078,7 @@
                             </div>
                         )}
 
-                        {/* 6. PROFILE VIEW & EDIT (With Gmail) */}
+                        {/* 6. PROFILE VIEW & EDIT (Shows Phone & Gmail for Everyone) */}
                         {activeTab === 'profile' && viewProfileData && (
                             <div className="max-w-md mx-auto mb-10">
                                 <div className="bg-white rounded-3xl p-5 text-center border border-slate-200/70 shadow-sm mt-8 relative animate-fade-in">
@@ -955,12 +1097,17 @@
                                             <h2 className="text-base font-black text-navy mb-1">{viewProfileData.name}</h2>
                                             <span className="inline-block px-3 py-1 bg-red-50 text-ylyred text-[10px] font-bold rounded-lg border border-red-100/70 mb-4">لجنة: {viewProfileData.committee}</span>
                                             
-                                            {user && viewProfileData.uid === user.uid && (
-                                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4 text-right space-y-2">
-                                                    <div className="flex justify-between text-xs"><span className="text-slate-400 font-bold">رقم الهاتف:</span><span className="font-bold text-slate-700" dir="ltr">+20 {userProfile?.phone}</span></div>
-                                                    <div className="flex justify-between text-xs"><span className="text-slate-400 font-bold">البريد الإلكتروني:</span><span className="font-bold text-slate-700 truncate max-w-[180px]" dir="ltr">{userProfile?.email || 'غير مسجل'}</span></div>
+                                            {/* Phone & Gmail displayed for all visitors */}
+                                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4 text-right space-y-2">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-slate-400 font-bold">رقم الهاتف:</span>
+                                                    <span className="font-bold text-slate-700" dir="ltr">{viewProfileData.phone ? `+20 ${viewProfileData.phone}` : 'غير مسجل'}</span>
                                                 </div>
-                                            )}
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-slate-400 font-bold">البريد الإلكتروني:</span>
+                                                    <span className="font-bold text-slate-700 truncate max-w-[180px]" dir="ltr">{viewProfileData.email || 'غير مسجل'}</span>
+                                                </div>
+                                            </div>
                                             
                                             <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
                                                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
@@ -979,7 +1126,6 @@
                                         <div className="text-right pt-2 animate-fade-in relative z-0">
                                             <h3 className="text-sm font-black text-navy mb-4 text-center flex items-center justify-center gap-1.5"><Edit3 size={15}/> تعديل البروفايل</h3>
                                             
-                                            {/* Profile Picture Edit */}
                                             <div className="flex flex-col items-center mb-4 relative">
                                                 <div className="w-20 h-20 rounded-full border-2 border-white shadow-md bg-slate-100 overflow-hidden relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>
                                                     <img src={editProfileData.avatar} className="w-full h-full object-cover" alt="" />
@@ -1014,7 +1160,6 @@
                             <div className="animate-fade-in max-w-[320px] mx-auto mt-6 pb-10">
                                 <div className="bg-[#001845] p-5 rounded-3xl shadow-xl border border-blue-900/50">
                                     
-                                    {/* Avatar Upload for Signup */}
                                     {!isLoginView ? (
                                         <div className="flex flex-col items-center mb-3">
                                             <div onClick={() => signupFileInputRef.current.click()} className="w-16 h-16 rounded-full border-2 border-white/40 bg-white/10 flex items-center justify-center cursor-pointer overflow-hidden relative group shadow-inner">
