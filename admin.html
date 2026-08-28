@@ -7,7 +7,7 @@
     <!-- ================= SEO & Security Tags ================= -->
     <title>إدارة كايزن YLY | Kaizen OS Admin</title>
 
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
@@ -77,7 +77,10 @@
             Analytics: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
             ChevronDown: '<path d="m6 9 6 6 6-6"/>',
             Check: '<polyline points="20 6 9 17 4 12"/>',
-            LogOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>'
+            LogOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+            Award: '<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>',
+            ArrowRight: '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
+            User: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
         };
 
         // --- Firebase Config ---
@@ -95,6 +98,12 @@
 
         // 5 Committees Only
         const COMMITTEES = ['HR', 'PR', 'OR', 'SM', 'Training'];
+
+        // Gamification Score Map
+        const SCORE_MAP = {
+            'submitted': 5, 'under_review': 5, 'approved': 20, 
+            'experiment': 30, 'measuring': 30, 'implemented': 50, 'standardized': 75, 'rejected': 0
+        };
 
         // المراحل الحقيقية للكايزن
         const STAGES = [
@@ -114,10 +123,13 @@
             const [password, setPassword] = useState('');
             const [loading, setLoading] = useState(true);
 
-            const [activeTab, setActiveTab] = useState('list'); // list, analytics
+            const [activeTab, setActiveTab] = useState('list'); // list, analytics, profile
             const [ideas, setIdeas] = useState([]);
             const [toast, setToast] = useState(null);
             const [filterStatus, setFilterStatus] = useState('all');
+
+            // Profile View State for Admin
+            const [viewProfileData, setViewProfileData] = useState(null);
 
             // State for inline expanding and editing
             const [expandedId, setExpandedId] = useState(null);
@@ -129,7 +141,7 @@
             useEffect(() => {
                 // فرض بقاء تسجيل الدخول نشطاً دائماً في المتصفح
                 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-                
+
                 const unsubAuth = auth.onAuthStateChanged(async (u) => {
                     if (u) {
                         try {
@@ -229,6 +241,36 @@
                 }
             };
 
+            // Open Profile View for Admin
+            const openMemberProfile = async (uid, fallbackName, fallbackAvatar, fallbackComm) => {
+                setViewProfileData({
+                    name: fallbackName,
+                    uid: uid,
+                    avatar: fallbackAvatar,
+                    committee: fallbackComm,
+                    phone: 'جاري التحميل...',
+                    email: 'جاري التحميل...'
+                });
+                setActiveTab('profile');
+
+                try {
+                    const userDoc = await db.collection('users').doc(uid).get();
+                    if (userDoc.exists) {
+                        const d = userDoc.data();
+                        setViewProfileData({
+                            name: d.name || fallbackName,
+                            uid: uid,
+                            avatar: d.avatar || fallbackAvatar,
+                            committee: d.committee || fallbackComm,
+                            phone: d.phone || 'غير مسجل',
+                            email: d.email || 'غير مسجل'
+                        });
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            };
+
             const filteredIdeas = filterStatus === 'all' ? ideas : ideas.filter(i => i.status === filterStatus);
 
             // Analytics Calculations
@@ -239,7 +281,10 @@
 
                 const committeeCount = {};
                 COMMITTEES.forEach(c => committeeCount[c] = 0);
-                ideas.forEach(i => { if(committeeCount[i.committee] !== undefined) committeeCount[i.committee]++; });
+                ideas.forEach(i => { 
+                    const comm = i.committee || i.authorCommittee;
+                    if(committeeCount[comm] !== undefined) committeeCount[comm]++; 
+                });
 
                 return {
                     total: ideas.length,
@@ -247,6 +292,36 @@
                     standardizationRate: ((standardized / total) * 100).toFixed(0),
                     committeeCount
                 };
+            }, [ideas]);
+
+            // حساب بطل كل لجنة (الأول في النقاط من كل لجنة)
+            const topPerCommittee = useMemo(() => {
+                const userScores = {};
+                ideas.forEach(idea => {
+                    const uid = idea.authorId;
+                    if (!uid) return;
+                    const comm = idea.authorCommittee || 'HR';
+                    if (!userScores[uid]) {
+                        userScores[uid] = {
+                            name: idea.author,
+                            avatar: idea.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(idea.author || 'YLY')}&backgroundColor=002060,E30613`,
+                            uid: uid,
+                            committee: comm,
+                            score: 0
+                        };
+                    }
+                    userScores[uid].score += (SCORE_MAP[idea.status] || 0);
+                });
+
+                const champions = [];
+                COMMITTEES.forEach(comm => {
+                    const members = Object.values(userScores).filter(u => u.committee === comm);
+                    if (members.length > 0) {
+                        members.sort((a, b) => b.score - a.score);
+                        champions.push({ ...members[0], committeeName: comm });
+                    }
+                });
+                return champions;
             }, [ideas]);
 
             const getStatusColor = (status) => {
@@ -260,28 +335,50 @@
 
             if (!user) {
                 return (
-                    <div className="min-h-screen flex items-center justify-center p-4">
-                        <form onSubmit={handleLogin} className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-xl border border-slate-200/60 animate-fade-in">
-                            <div className="flex justify-center mb-4">
-                                <div className="w-16 h-16 rounded-full overflow-hidden shadow-sm ring-1 ring-slate-200 bg-[#001845]">
+                    <div className="min-h-screen flex items-center justify-center p-4 bg-[#001845]">
+                        <form onSubmit={handleLogin} className="bg-white p-6 rounded-3xl w-full max-w-[320px] shadow-2xl border border-white/10 animate-fade-in">
+                            <div className="flex justify-center mb-2">
+                                <div className="w-12 h-12 rounded-full overflow-hidden shadow-xs ring-1 ring-slate-200 bg-[#001845]">
                                     <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
                                 </div>
                             </div>
-                            <h1 className="text-xl font-black text-navy text-center mb-1">إدارة كايزن YLY</h1>
-                            <p className="text-xs font-bold text-slate-400 text-center mb-6">خاص بقادة الفرق والإدارة فقط</p>
+                            
+                            <h1 className="text-base font-black text-[#002060] text-center mb-0.5">إدارة كايزن YLY</h1>
+                            <p className="text-[10px] font-bold text-slate-400 text-center mb-4">خاص بقادة الفرق والإدارة فقط</p>
 
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-600 block mb-1">البريد الإلكتروني</label>
-                                    <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm font-bold focus:border-navy" dir="ltr" />
+                                    <label className="text-[9px] font-black text-slate-600 block mb-1">البريد الإلكتروني</label>
+                                    <input 
+                                        type="email" 
+                                        required 
+                                        value={email} 
+                                        onChange={e=>setEmail(e.target.value)} 
+                                        placeholder="admin@example.com"
+                                        className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-navy focus:border-[#002060] placeholder-slate-300" 
+                                        dir="ltr" 
+                                    />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-600 block mb-1">كلمة المرور</label>
-                                    <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-sm font-bold focus:border-navy" />
+                                    <label className="text-[9px] font-black text-slate-600 block mb-1">كلمة المرور</label>
+                                    <input 
+                                        type="password" 
+                                        required 
+                                        value={password} 
+                                        onChange={e=>setPassword(e.target.value)} 
+                                        placeholder="••••••••"
+                                        className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-navy focus:border-[#002060] placeholder-slate-300" 
+                                    />
                                 </div>
-                                <button type="submit" disabled={loading} className="w-full bg-ylyred hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors shadow-sm flex justify-center items-center mt-2">
-                                    {loading ? <span className="spinner"></span> : 'تسجيل الدخول'}
-                                </button>
+                                <div className="pt-1">
+                                    <button 
+                                        type="submit" 
+                                        disabled={loading} 
+                                        className="w-full bg-[#E30613] hover:bg-red-700 text-white font-bold py-2.5 rounded-xl transition-colors shadow-sm flex justify-center items-center text-xs active:scale-[0.99]"
+                                    >
+                                        {loading ? <span className="spinner"></span> : 'تسجيل الدخول'}
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -299,34 +396,43 @@
 
                     {/* Navbar */}
                     <header className="bg-white px-4 md:px-6 py-3 flex justify-between items-center shadow-sm z-10 border-b border-slate-200 sticky top-0">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full overflow-hidden bg-[#001845] shrink-0">
-                                <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
+                        {activeTab === 'profile' ? (
+                            <button onClick={() => setActiveTab('analytics')} className="flex items-center gap-1.5 text-navy font-bold text-xs bg-slate-100 px-3 py-1.5 rounded-full hover:bg-slate-200 transition-colors">
+                                <Icon path={ICONS.ArrowRight} size={14}/> عودة للإحصائيات
+                            </button>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full overflow-hidden bg-[#001845] shrink-0">
+                                    <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
+                                </div>
+                                <div>
+                                    <h1 className="font-black text-navy text-sm md:text-base leading-none">إدارة كايزن</h1>
+                                    <span className="text-[9px] font-bold text-ylyred block mt-0.5">YLY Kaizen OS</span>
+                                </div>
                             </div>
-                            <div>
-                                <h1 className="font-black text-navy text-sm md:text-base leading-none">إدارة كايزن</h1>
-                                <span className="text-[9px] font-bold text-ylyred block mt-0.5">YLY Kaizen OS</span>
-                            </div>
-                        </div>
+                        )}
+                        
                         <button onClick={() => auth.signOut()} className="text-[10px] font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 flex items-center gap-1">
                             <Icon path={ICONS.LogOut} size={14}/> خروج
                         </button>
                     </header>
 
-                    {/* Tabs */}
-                    <div className="bg-white border-b border-slate-200 px-4 py-2 flex gap-2 overflow-x-auto hide-scroll">
-                        <button onClick={()=>setActiveTab('list')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors ${activeTab==='list'?'bg-navy text-white':'bg-slate-50 text-slate-600'}`}>
-                            <Icon path={ICONS.List} size={16}/> قائمة الأفكار
-                        </button>
-                        <button onClick={()=>setActiveTab('analytics')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors ${activeTab==='analytics'?'bg-navy text-white':'bg-slate-50 text-slate-600'}`}>
-                            <Icon path={ICONS.Analytics} size={16}/> الإحصائيات والأداء
-                        </button>
-                    </div>
+                    {/* Tabs (Hidden when viewing profile) */}
+                    {activeTab !== 'profile' && (
+                        <div className="bg-white border-b border-slate-200 px-4 py-2 flex gap-2 overflow-x-auto hide-scroll">
+                            <button onClick={()=>setActiveTab('list')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors ${activeTab==='list'?'bg-navy text-white':'bg-slate-50 text-slate-600'}`}>
+                                <Icon path={ICONS.List} size={16}/> قائمة الأفكار
+                            </button>
+                            <button onClick={()=>setActiveTab('analytics')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors ${activeTab==='analytics'?'bg-navy text-white':'bg-slate-50 text-slate-600'}`}>
+                                <Icon path={ICONS.Analytics} size={16}/> الإحصائيات والأداء
+                            </button>
+                        </div>
+                    )}
 
                     {/* Main Area */}
                     <main className="flex-1 p-4 md:p-6 max-w-4xl mx-auto w-full">
 
-                        {/* 1. LIST VIEW (Inline Expandable Cards) */}
+                        {/* 1. LIST VIEW */}
                         {activeTab === 'list' && (
                             <div className="animate-fade-in space-y-4">
 
@@ -355,7 +461,7 @@
                                         return (
                                             <div key={idea.id} className={`bg-white rounded-2xl border transition-all duration-300 ${isExpanded ? 'border-navy shadow-md' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
 
-                                                {/* Card Header (Always Visible) */}
+                                                {/* Card Header */}
                                                 <div onClick={() => toggleExpand(idea)} className="p-4 cursor-pointer flex justify-between items-center gap-3">
                                                     <div className="flex-1 min-w-0">
                                                         <h3 className="font-bold text-navy text-sm truncate mb-1">{idea.title}</h3>
@@ -371,7 +477,7 @@
                                                     </div>
                                                 </div>
 
-                                                {/* Expanded Body (Inline Edit Area) */}
+                                                {/* Expanded Body */}
                                                 {isExpanded && (
                                                     <div className="p-4 pt-0 border-t border-slate-100 animate-fade-in">
 
@@ -490,8 +596,86 @@
                                         })}
                                     </div>
                                 </div>
+
+                                {/* الحاوية الجديدة: أبطال اللجان (المتصدر من كل لجنة) */}
+                                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mt-4">
+                                    <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 mb-3">
+                                        <Icon path={ICONS.Award} size={18} className="text-yellow-500" />
+                                        <h3 className="text-sm font-black text-navy">أبطال اللجان (المتصدر من كل لجنة)</h3>
+                                    </div>
+
+                                    {topPerCommittee.length === 0 ? (
+                                        <p className="text-center text-xs font-bold text-slate-400 py-4">لا توجد بيانات للأبطال حتى الآن</p>
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                            {topPerCommittee.map((champ) => (
+                                                <div 
+                                                    key={champ.committeeName} 
+                                                    onClick={() => openMemberProfile(champ.uid, champ.name, champ.avatar, champ.committee)}
+                                                    className="bg-slate-50/70 hover:bg-blue-50/50 border border-slate-200/80 hover:border-navy p-3 rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] shadow-xs"
+                                                >
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        {/* Honorary Circular Frame */}
+                                                        <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-yellow-500 via-amber-200 to-yellow-600 shadow-xs shrink-0">
+                                                            <img src={champ.avatar} className="w-full h-full rounded-full object-cover bg-white" alt="" />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <h4 className="font-bold text-slate-900 text-xs truncate">{champ.name}</h4>
+                                                            <span className="text-[9px] font-black text-ylyred bg-red-50 px-1.5 py-0.2 rounded inline-block mt-0.5">
+                                                                لجنة: {champ.committeeName}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-left bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100 shrink-0">
+                                                        <span className="text-xs font-black text-emerald-600">{champ.score}</span>
+                                                        <span className="text-[8px] font-bold text-emerald-500 block leading-none">نقطة</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                             </div>
                         )}
+
+                        {/* 3. MEMBER PROFILE VIEW FOR ADMIN */}
+                        {activeTab === 'profile' && viewProfileData && (
+                            <div className="max-w-md mx-auto animate-fade-in">
+                                <div className="bg-white rounded-3xl p-6 text-center border border-slate-200 shadow-md mt-4 relative">
+                                    <img src={viewProfileData.avatar} className="w-20 h-20 mx-auto -mt-12 mb-3 rounded-full border-4 border-white shadow-md bg-slate-100 object-cover" alt="" />
+                                    <h2 className="text-base font-black text-navy mb-1">{viewProfileData.name}</h2>
+                                    <span className="inline-block px-3 py-1 bg-red-50 text-ylyred text-[10px] font-black rounded-lg border border-red-100 mb-4">
+                                        لجنة: {viewProfileData.committee}
+                                    </span>
+
+                                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 mb-4 text-right space-y-2.5">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-400 font-bold">رقم الهاتف:</span>
+                                            <span className="font-bold text-slate-700" dir="ltr">{viewProfileData.phone ? `+20 ${viewProfileData.phone}` : 'غير مسجل'}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-400 font-bold">البريد الإلكتروني:</span>
+                                            <span className="font-bold text-slate-700 truncate max-w-[200px]" dir="ltr">{viewProfileData.email || 'غير مسجل'}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
+                                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                            <span className="text-[10px] text-slate-400 font-bold block mb-1">الأفكار المطروحة</span>
+                                            <p className="text-lg font-black text-navy">{ideas.filter(i => i.authorId === viewProfileData.uid).length}</p>
+                                        </div>
+                                        <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+                                            <span className="text-[10px] text-emerald-600 font-bold block mb-1">نقاط التأثير</span>
+                                            <p className="text-lg font-black text-emerald-700">{
+                                                ideas.filter(i => i.authorId === viewProfileData.uid).reduce((sum, idea) => sum + (SCORE_MAP[idea.status] || 0), 0)
+                                            }</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                     </main>
                 </div>
             );
