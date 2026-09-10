@@ -116,14 +116,13 @@ const CustomSelect = ({ value, options, onChange, placeholder, colorClass="focus
 
 function YlyKaizenApp() {
     useEffect(() => {
-        // إخفاء شاشة التحميل فور تشغيل React
         const overlay = document.getElementById('loadingOverlay');
         if (overlay) {
+            overlay.style.opacity = '0';
+            overlay.style.pointerEvents = 'none';
             setTimeout(() => {
-                overlay.style.opacity = '0';
-                overlay.style.pointerEvents = 'none';
-                setTimeout(() => { overlay.style.display = 'none'; }, 300);
-            }, 600);
+                overlay.style.display = 'none';
+            }, 250); // وقت بسيط جداً لحركة التلاشي فقط
         }
     }, []);
 
