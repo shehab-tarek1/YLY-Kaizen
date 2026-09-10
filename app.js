@@ -115,13 +115,16 @@ const CustomSelect = ({ value, options, onChange, placeholder, colorClass="focus
 };
 
 function YlyKaizenApp() {
-    const [isLoading, setIsLoading] = useState(true);
-
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setIsLoading(false);
-        }, 1200);
-        return () => clearTimeout(timer);
+        // إخفاء شاشة التحميل فور تشغيل React
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                overlay.style.pointerEvents = 'none';
+                setTimeout(() => { overlay.style.display = 'none'; }, 300);
+            }, 600);
+        }
     }, []);
 
     const [activeTab, setActiveTab] = useState('home');
@@ -1163,20 +1166,7 @@ function YlyKaizenApp() {
                             </button>
                         </nav>
                     )}
-
-                    {/* Loading Overlay */}
-                    {isLoading && (
-                        <div id="loadingOverlay">
-                            <div className="spinner-box">
-                                <div className="modern-spinner"></div>
-                                <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY Logo" />
-                            </div>
-                            <div className="loading-title">
-                                YLY <span>System</span>
-                            </div>
-                            <div className="loading-subtitle">جاري تأمين النظام وتهيئته...</div>
-                        </div>
-                    )}
+       
                 </div>
             );
         }
