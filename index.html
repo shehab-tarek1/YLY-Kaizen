@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
+
     <!-- ================= SEO & Meta Tags ================= -->
     <title>نظام كايزن YLY | منصة التطوير المستمر</title>
 
@@ -76,7 +76,7 @@
 </head>
 <body class="text-slate-800 antialiased selection:bg-[#002060] selection:text-white">
 
-    <!-- شاشة التحميل تظهر لحظياً قبل تحميل أي مكتبة -->
+    <!-- شاشة التحميل تظهر لحظياً وفوراً -->
     <div id="loadingOverlay">
         <div class="spinner-box">
             <div class="modern-spinner"></div>
@@ -89,6 +89,39 @@
     </div>
 
     <div id="root"></div>
+
+    <!-- كود المراقبة الذكي لإخفاء الشاشة لحظياً عند ظهور المحتوى -->
+    <script>
+        (function() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (!overlay) return;
+
+            const hideScreen = () => {
+                overlay.style.transition = 'opacity 0.2s ease, visibility 0.2s ease';
+                overlay.style.opacity = '0';
+                overlay.style.pointerEvents = 'none';
+                setTimeout(() => { overlay.style.display = 'none'; }, 200);
+            };
+
+            // مراقبة الـ root ومجرد أن يضع React أول عنصر داخله يتم الإخفاء فوراً
+            const rootEl = document.getElementById('root');
+            const observer = new MutationObserver((mutationsList) => {
+                if (rootEl && rootEl.children.length > 0) {
+                    hideScreen();
+                    observer.disconnect();
+                }
+            });
+
+            if (rootEl) {
+                observer.observe(rootEl, { childList: true, subtree: true });
+            }
+
+            // صمام أمان في حال اكتمل التحميل
+            window.addEventListener('load', () => {
+                setTimeout(hideScreen, 300);
+            });
+        })();
+    </script>
 
     <!-- ربط ملف الـ JavaScript الخارجي المخصص لـ React -->
     <script type="text/babel" src="app.js"></script>
