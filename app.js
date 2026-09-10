@@ -115,6 +115,15 @@ const CustomSelect = ({ value, options, onChange, placeholder, colorClass="focus
 };
 
 function YlyKaizenApp() {
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 1200);
+        return () => clearTimeout(timer);
+    }, []);
+
     const [activeTab, setActiveTab] = useState('home');
     const [selectedIdeaId, setSelectedIdeaId] = useState(null);
     const [toast, setToast] = useState(null);
@@ -1139,7 +1148,7 @@ function YlyKaizenApp() {
                             <button onClick={()=>setActiveTab('leaderboard')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${activeTab==='leaderboard'?'text-navy':'text-slate-400'}`}>
                                 <Award size={18} /> <span className="text-[8px] font-bold">الأبطال</span>
                             </button>
-                            
+
                             <div className="relative -top-[16px]">
                                 <button onClick={()=>requireAuth('add-idea')} className="bg-ylyred text-white w-[46px] h-[46px] rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(227,6,19,0.3)] border-4 border-[#F4F7FB] active:scale-90 transition-transform">
                                     <Plus size={22} />
@@ -1154,9 +1163,23 @@ function YlyKaizenApp() {
                             </button>
                         </nav>
                     )}
+
+                    {/* Loading Overlay */}
+                    {isLoading && (
+                        <div id="loadingOverlay">
+                            <div className="spinner-box">
+                                <div className="modern-spinner"></div>
+                                <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY Logo" />
+                            </div>
+                            <div className="loading-title">
+                                YLY <span>System</span>
+                            </div>
+                            <div className="loading-subtitle">جاري تأمين النظام وتهيئته...</div>
+                        </div>
+                    )}
                 </div>
             );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<YlyKaizenApp />);
+        root.render(<YlyKaizenApp />);
