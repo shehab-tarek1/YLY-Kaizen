@@ -46,3 +46,81 @@ input, textarea, button {
 input:focus-visible, textarea:focus-visible { 
     border-color: #002060 !important; 
 }
+
+/* =========================================
+   Loading Overlay (شاشة التحميل)
+========================================= */
+#loadingOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.98);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-family: 'Cairo', sans-serif;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.spinner-box {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+}
+
+.spinner-box img {
+    width: 56px !important;
+    height: 56px !important;
+    object-fit: contain !important;
+    position: relative;
+    z-index: 10;
+    box-sizing: border-box;
+    filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.5));
+}
+
+.modern-spinner {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 4px solid rgba(255, 255, 255, 0.05);
+    border-left-color: #E30613;
+    border-radius: 50%;
+    animation: spinOverlay 1s linear infinite;
+    box-sizing: border-box;
+}
+
+.loading-title {
+    font-size: 1.5rem !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.05em !important;
+    color: #ffffff !important;
+    margin-bottom: 0.5rem !important;
+    line-height: 1.25 !important;
+    text-align: center !important;
+}
+
+.loading-title span {
+    color: #E30613 !important;
+}
+
+.loading-subtitle {
+    font-size: 10px !important;
+    color: #9ca3af !important;
+    font-family: monospace, monospace !important;
+    line-height: 1.5 !important;
+    text-align: center !important;
+}
+
+@keyframes spinOverlay {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
