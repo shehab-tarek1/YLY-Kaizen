@@ -75,6 +75,19 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="text-slate-800 antialiased selection:bg-[#002060] selection:text-white">
+
+    <!-- شاشة التحميل تظهر لحظياً قبل تحميل أي مكتبة -->
+    <div id="loadingOverlay">
+        <div class="spinner-box">
+            <div class="modern-spinner"></div>
+            <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY Logo">
+        </div>
+        <div class="loading-title">
+            YLY <span>System</span>
+        </div>
+        <div class="loading-subtitle">جاري تأمين النظام وتهيئته...</div>
+    </div>
+
     <div id="root"></div>
 
     <!-- ربط ملف الـ JavaScript الخارجي المخصص لـ React -->
