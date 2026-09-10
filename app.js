@@ -115,17 +115,6 @@ const CustomSelect = ({ value, options, onChange, placeholder, colorClass="focus
 };
 
 function YlyKaizenApp() {
-    useEffect(() => {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) {
-            overlay.style.opacity = '0';
-            overlay.style.pointerEvents = 'none';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-            }, 250); // وقت بسيط جداً لحركة التلاشي فقط
-        }
-    }, []);
-
     const [activeTab, setActiveTab] = useState('home');
     const [selectedIdeaId, setSelectedIdeaId] = useState(null);
     const [toast, setToast] = useState(null);
