@@ -169,6 +169,24 @@ function YlyKaizenApp() {
         toastTimer.current = setTimeout(() => setToast(null), 2600);
     }, []);
 
+// --- كود إخفاء شاشة التحميل عند اكتمال البيانات ---
+useEffect(() => {
+    if (ideasLoaded) {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.style.transition = 'opacity 0.3s ease, visibility 0.3s ease';
+            overlay.style.opacity = '0';
+            overlay.style.visibility = 'hidden';
+            
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        }
+    }
+}, [ideasLoaded]);
+
     // Debounce search input to prevent any typing lag
     useEffect(() => {
         const timer = setTimeout(() => {
