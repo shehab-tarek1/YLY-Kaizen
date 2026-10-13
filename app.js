@@ -51,26 +51,32 @@ const getInitials = (name) => {
     return clean.slice(0, 2).toUpperCase();
 };
 
-const optimizeImageUrl = (url, size = 96) => {
-    if (!url) return '';
-    if (url.includes('cloudinary.com') && !url.includes('c_thumb')) {
-        return url.replace('/upload/', `/upload/c_thumb,w_${size},h_${size},g_face,q_auto,f_auto/`);
+const optimizeImageUrl = (url, size = 180) => {
+    if (!url || typeof url !== 'string') return '';
+    // استخدام c_limit للحفاظ على الصورة الأصلية وإطارها كاملاً بدون أي زووم مفرط أو اقتصاص للوجه
+    if (url.includes('cloudinary.com') && !url.includes('c_limit') && !url.includes('c_fill') && !url.includes('c_thumb')) {
+        return url.replace('/upload/', `/upload/c_limit,w_${size},q_auto,f_auto/`);
     }
     return url;
 };
 
 const getAvatar = (name) => '';
 
-// مكون الأفاتار فائق السرعة: يظهر الصورة إذا رُفعت، أو أول حرفين من الاسم بدقة دون صور بيضاء
+// مكون الأفاتار فائق السرعة: يظهر الصورة الأصلية دون زووم، أو أول حرفين من الاسم بدقة
 const UserAvatar = ({ src, name, size = "w-9 h-9", textClass = "text-xs", className = "", onClick }) => {
     const [imgError, setImgError] = useState(false);
+
+    useEffect(() => {
+        setImgError(false);
+    }, [src]);
+
     const isCustomImage = Boolean(src && !src.includes('dicebear.com') && !src.includes('initials/svg') && !imgError);
 
     if (isCustomImage) {
         return (
             <div onClick={onClick} className={`rounded-full overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80 ${size} ${className}`}>
                 <img 
-                    src={optimizeImageUrl(src, 96)} 
+                    src={optimizeImageUrl(src, 180)} 
                     alt={name || ''} 
                     onError={() => setImgError(true)} 
                     loading="lazy" 
@@ -175,6 +181,62 @@ function YlyKaizenApp() {
     const [toast, setToast] = useState(null);
     const [fullScreenImage, setFullScreenImage] = useState(null);
 
+    // مراجع لإدارة مواضع التمرير لكل صفحة على حدة وتاريخ التنقل
+    const mainContainerRef = useRef(null);
+    const tabScrollPositions = useRef({});
+    const [historyStack, setHistoryStack] = useState([{ tab: 'home', ideaId: null, profileData: null }]);
+
+    // دالة الانتقال الذكية مع حفظ موضع التمرير للصفحة السابقة
+    const navigateTo = useCallback((tab, extra = {}) => {
+        if (mainContainerRef.current) {
+            tabScrollPositions.current[activeTab] = mainContainerRef.current.scrollTop;
+        }
+
+        if (extra.ideaId !== undefined) setSelectedIdeaId(extra.ideaId);
+        if (extra.profileData !== undefined) setViewProfileData(extra.profileData);
+
+        setHistoryStack(prev => {
+            const last = prev[prev.length - 1];
+            if (last && last.tab === tab && last.ideaId === (extra.ideaId || null)) {
+                return prev;
+            }
+            return [...prev, { tab, ideaId: extra.ideaId || null, profileData: extra.profileData || null }];
+        });
+
+        try {
+            window.history.pushState({ tab, ideaId: extra.ideaId || null }, '');
+        } catch(e) {}
+
+        setActiveTab(tab);
+    }, [activeTab]);
+
+    // دالة الرجوع الذكية: ترجع لنفس الصفحة وموضع التمرير السابق بدقة
+    const goBack = useCallback(() => {
+        if (fullScreenImage) {
+            setFullScreenImage(null);
+            return;
+        }
+
+        if (historyStack.length > 1) {
+            if (mainContainerRef.current) {
+                tabScrollPositions.current[activeTab] = mainContainerRef.current.scrollTop;
+            }
+
+            const newStack = [...historyStack];
+            newStack.pop();
+            const prev = newStack[newStack.length - 1];
+
+            setHistoryStack(newStack);
+            if (prev.ideaId !== undefined) setSelectedIdeaId(prev.ideaId);
+            if (prev.profileData !== undefined) setViewProfileData(prev.profileData);
+            setActiveTab(prev.tab);
+        } else {
+            if (activeTab !== 'home') {
+                navigateTo('home');
+            }
+        }
+    }, [fullScreenImage, historyStack, activeTab, navigateTo]);
+
     // Search & Filter State
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -241,6 +303,27 @@ useEffect(() => {
         }
     }
 }, [ideasLoaded]);
+
+// استعادة موضع التمرير بدقة لكل صفحة ومنع توريث الهبوط
+useEffect(() => {
+    if (mainContainerRef.current) {
+        const savedScroll = tabScrollPositions.current[activeTab] || 0;
+        requestAnimationFrame(() => {
+            if (mainContainerRef.current) {
+                mainContainerRef.current.scrollTop = savedScroll;
+            }
+        });
+    }
+}, [activeTab, selectedIdeaId]);
+
+// دعم زر الرجوع الخاص بالهاتف أو المتصفح بسلاسة
+useEffect(() => {
+    const handlePopState = () => {
+        goBack();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+}, [goBack]);
 
     // Debounce search input to prevent any typing lag
     useEffect(() => {
@@ -477,7 +560,7 @@ useEffect(() => {
 
     const handleUpvote = async (id, e) => {
         if (e) e.stopPropagation();
-        if (!user) { showToast('يرجى تسجيل الدخول للتفاعل', 'error'); setActiveTab('auth'); return; }
+        if (!user) { showToast('يرجى تسجيل الدخول للتفاعل', 'error'); navigateTo('auth'); return; }
         if (pendingVotes[id]) return;
 
         const idea = ideas.find(i => i.id === id);
@@ -507,7 +590,7 @@ useEffect(() => {
 
     const handleSubmitIdea = async (e) => {
         e.preventDefault();
-        if (!user) { setActiveTab('auth'); return; }
+        if (!user) { navigateTo('auth'); return; }
         setIsSubmittingIdea(true);
         try {
             const authorName = user.displayName || userProfile?.name || "عضو YLY";
@@ -531,7 +614,7 @@ useEffect(() => {
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             setNewIdea({ title: '', problem: '', solution: '', committee: 'HR', expectedImpact: 'High' });
-            setActiveTab('home');
+            navigateTo('home');
             showToast('تم إرسال فكرتك للإدارة بنجاح');
         } catch (err) {
             showToast('تعذر إرسال الفكرة', 'error');
@@ -576,14 +659,12 @@ useEffect(() => {
         if (e) e.stopPropagation();
         setIsEditingProfile(false);
 
-        // Show initial view immediately
-        setViewProfileData({
-            name, uid, avatar: avatar || getAvatar(name), committee: committee || "عضو",
+        const initialData = {
+            name, uid, avatar: avatar || '', committee: committee || "عضو",
             phone: '...', email: '...'
-        });
-        setActiveTab('profile');
+        };
+        navigateTo('profile', { profileData: initialData });
 
-        // Fetch full public data (phone, email) from Firestore
         try {
             const userDoc = await db.collection('users').doc(uid).get();
             if (userDoc.exists) {
@@ -591,7 +672,7 @@ useEffect(() => {
                 setViewProfileData({
                     name: d.name || name,
                     uid,
-                    avatar: d.avatar || avatar || getAvatar(name),
+                    avatar: d.avatar || avatar || '',
                     committee: d.committee || committee || "عضو",
                     phone: d.phone || 'غير مسجل',
                     email: d.email || 'غير مسجل'
@@ -603,8 +684,8 @@ useEffect(() => {
     };
 
     const requireAuth = (nextTab) => {
-        if (user) setActiveTab(nextTab);
-        else setActiveTab('auth');
+        if (user) navigateTo(nextTab);
+        else navigateTo('auth');
     };
 
     const selectedIdea = useMemo(() => ideas.find(i => i.id === selectedIdeaId), [ideas, selectedIdeaId]);
@@ -657,7 +738,7 @@ useEffect(() => {
                 <div className="h-0.5 bg-[#E30613] w-full"></div>
                 <div className="px-4 py-2 flex items-center justify-between h-[52px]">
                     {(activeTab === 'idea-details' || activeTab === 'add-idea' || activeTab === 'auth' || isVisitingOtherProfile) ? (
-                        <button onClick={() => setActiveTab('home')} className="flex items-center gap-2 text-white font-bold text-xs bg-white/10 px-3 py-1.5 rounded-full hover:bg-white/20 transition-colors">
+                        <button onClick={goBack} className="flex items-center gap-2 text-white font-bold text-xs bg-white/10 px-3 py-1.5 rounded-full hover:bg-white/20 transition-colors active:scale-95">
                             <ArrowRight size={14} /> عودة
                         </button>
                     ) : (
@@ -678,7 +759,7 @@ useEffect(() => {
                         </button>
                     ) : (
                         activeTab !== 'auth' && (
-                            <button onClick={() => setActiveTab('auth')} className="text-[10px] font-bold text-white bg-ylyred px-3 py-1.5 rounded-full shadow-sm">
+                            <button onClick={() => navigateTo('auth')} className="text-[10px] font-bold text-white bg-ylyred px-3 py-1.5 rounded-full shadow-sm">
                                 تسجيل الدخول
                             </button>
                         )
@@ -687,7 +768,7 @@ useEffect(() => {
             </header>
 
             {/* Main Content Area */}
-            <main className={`flex-1 overflow-y-auto pt-[70px] px-3.5 hide-scroll relative z-10 
+            <main ref={mainContainerRef} className={`flex-1 overflow-y-auto pt-[70px] px-3.5 hide-scroll relative z-10 
                 ${showBottomNav ? 'pb-[80px]' : activeTab === 'idea-details' ? 'pb-0' : 'pb-6'}`}>
 
                 {/* 1. KAIZEN BOARD */}
@@ -704,7 +785,7 @@ useEffect(() => {
                                     <p className="text-[10px] text-blue-200 font-bold mb-1">الأفكار المطروحة</p>
                                     <p className="text-2xl font-black text-white">{ideas.length}</p>
                                 </div>
-                                <div onClick={() => setActiveTab('library')} className="bg-gradient-to-br from-emerald-500/30 to-emerald-600/50 rounded-2xl p-3 border border-emerald-400/30 backdrop-blur-sm cursor-pointer active:scale-95 transition-transform shadow-sm">
+                                <div onClick={() => navigateTo('library')} className="bg-gradient-to-br from-emerald-500/30 to-emerald-600/50 rounded-2xl p-3 border border-emerald-400/30 backdrop-blur-sm cursor-pointer active:scale-95 transition-transform shadow-sm">
                                     <p className="text-[10px] text-emerald-100 font-bold mb-1">أفكار تعممت بنجاح</p>
                                     <p className="text-2xl font-black text-white">{ideas.filter(i => i.status === 'standardized').length}</p>
                                 </div>
@@ -807,7 +888,7 @@ useEffect(() => {
                             return (
                                 <article 
                                     key={idea.id} 
-                                    onClick={() => { setSelectedIdeaId(idea.id); setActiveTab('idea-details'); }} 
+                                    onClick={() => navigateTo('idea-details', { ideaId: idea.id })} 
                                     className="animate-slide-up rounded-2xl border-[1.5px] border-[#002060]/30 bg-[#FAFBFD] shadow-[0_3px_12px_rgba(0,32,96,0.06)] hover:border-[#002060]/60 cursor-pointer active:scale-[0.99] transition-all overflow-hidden"
                                 >
                                     <div className="p-4">
@@ -958,7 +1039,7 @@ useEffect(() => {
                         <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 p-2.5 pb-safe z-30 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] rounded-t-[20px]">
                             <div className="max-w-xl mx-auto flex items-center gap-2">
                                 <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => {if(e.key==='Enter') handleAddComment(selectedIdea.id)}} placeholder={user ? "اكتب تعليقاً..." : "سجل الدخول للتعليق"} disabled={!user} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:border-navy" />
-                                <button onClick={() => user ? handleAddComment(selectedIdea.id) : setActiveTab('auth')} disabled={user && (!newComment.trim() || isCommenting)} className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${(user && newComment.trim() && !isCommenting) || !user ? 'bg-ylyred text-white' : 'bg-slate-100 text-slate-300'}`}>
+                                <button onClick={() => user ? handleAddComment(selectedIdea.id) : navigateTo('auth')} disabled={user && (!newComment.trim() || isCommenting)} className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${(user && newComment.trim() && !isCommenting) || !user ? 'bg-ylyred text-white' : 'bg-slate-100 text-slate-300'}`}>
                                     {isCommenting ? <span className="spinner"></span> : <Send size={15} className="transform rotate-180" />}
                                 </button>
                             </div>
@@ -1059,7 +1140,7 @@ useEffect(() => {
                             <p className="text-center text-xs font-bold text-slate-400 mt-10">المكتبة قيد الإنشاء...</p>
                         )}
                         {ideas.filter(i => i.status === 'standardized').map(idea => (
-                            <div key={idea.id} onClick={() => { setSelectedIdeaId(idea.id); setActiveTab('idea-details'); }} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 cursor-pointer hover:border-[#002060]">
+                            <div key={idea.id} onClick={() => navigateTo('idea-details', { ideaId: idea.id })} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 cursor-pointer hover:border-[#002060]">
                                 <h3 className="font-bold text-[#002060] text-sm leading-tight mb-1">{idea.title}</h3>
                                 <p className="text-[10px] text-slate-400 font-bold mb-3">اللجنة: {idea.committee}</p>
                                 <div className="flex justify-between items-center bg-blue-50/50 rounded-xl p-2 text-[10px] font-bold">
@@ -1080,7 +1161,7 @@ useEffect(() => {
                                     {!isEditingProfile && (
                                         <button onClick={() => setIsEditingProfile(true)} className="w-8 h-8 bg-blue-50 text-navy rounded-full flex items-center justify-center border border-blue-100"><Edit3 size={14}/></button>
                                     )}
-                                    <button onClick={() => { auth.signOut(); setActiveTab('home'); }} className="w-8 h-8 bg-red-50 text-red-500 rounded-full flex items-center justify-center border border-red-100"><LogOut size={14}/></button>
+                                    <button onClick={() => { auth.signOut(); navigateTo('home'); }} className="w-8 h-8 bg-red-50 text-red-500 rounded-full flex items-center justify-center border border-red-100"><LogOut size={14}/></button>
                                 </div>
                             )}
 
@@ -1151,7 +1232,7 @@ useEffect(() => {
                 {/* 7. AUTH (Login / Register with Gmail & Photo) */}
                 {activeTab === 'auth' && (
                             <div className="animate-fade-in max-w-[320px] mx-auto mt-6 pb-10">
-                                <div className="bg-[#001845] p-5 rounded-3xl shadow-xl border border-blue-900/50">
+                                <div className="bg-gradient-to-b from-[#17325D] to-[#102444] p-5.5 rounded-3xl shadow-xl border border-blue-400/25">
 
                                     {!isLoginView ? (
                                         <div className="flex flex-col items-center mb-3">
@@ -1209,10 +1290,10 @@ useEffect(() => {
                     {/* Fixed Bottom Navigation */}
                     {showBottomNav && (
                         <nav className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[24px] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] border-t border-slate-100 z-40 pb-safe pt-2 px-6 flex justify-between items-center h-[52px]">
-                            <button onClick={()=>setActiveTab('home')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${activeTab==='home'?'text-navy':'text-slate-400'}`}>
+                            <button onClick={()=>navigateTo('home')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${activeTab==='home'?'text-navy':'text-slate-400'}`}>
                                 <Home size={18} /> <span className="text-[8px] font-bold">الرئيسية</span>
                             </button>
-                            <button onClick={()=>setActiveTab('leaderboard')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${activeTab==='leaderboard'?'text-navy':'text-slate-400'}`}>
+                            <button onClick={()=>navigateTo('leaderboard')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${activeTab==='leaderboard'?'text-navy':'text-slate-400'}`}>
                                 <Award size={18} /> <span className="text-[8px] font-bold">الأبطال</span>
                             </button>
 
@@ -1222,10 +1303,10 @@ useEffect(() => {
                                 </button>
                             </div>
 
-                            <button onClick={()=>setActiveTab('library')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${activeTab==='library'?'text-navy':'text-slate-400'}`}>
+                            <button onClick={()=>navigateTo('library')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${activeTab==='library'?'text-navy':'text-slate-400'}`}>
                                 <BookOpen size={18} /> <span className="text-[8px] font-bold">المكتبة</span>
                             </button>
-                            <button onClick={() => user ? openProfile(user.displayName, user.photoURL || userProfile?.avatar || getAvatar(user.displayName), userProfile?.committee, user.uid) : setActiveTab('auth')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${(activeTab==='profile' || activeTab==='auth')?'text-navy':'text-slate-400'}`}>
+                            <button onClick={() => user ? openProfile(user.displayName, user.photoURL || userProfile?.avatar || getAvatar(user.displayName), userProfile?.committee, user.uid) : navigateTo('auth')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${(activeTab==='profile' || activeTab==='auth')?'text-navy':'text-slate-400'}`}>
                                 <User size={18} /> <span className="text-[8px] font-bold">حسابي</span>
                             </button>
                         </nav>
