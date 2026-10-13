@@ -1231,10 +1231,10 @@ useEffect(() => {
 
                 {/* 7. AUTH (Login / Register with Gmail & Photo) */}
                 {activeTab === 'auth' && (
-                            <div className="animate-fade-in max-w-[320px] mx-auto mt-6 pb-10">
-                                <div className="bg-gradient-to-b from-[#17325D] to-[#102444] p-5.5 rounded-3xl shadow-xl border border-blue-400/25">
 
-                                    {!isLoginView ? (
+<div className="animate-fade-in w-full max-w-[370px] mx-auto mt-5 px-3 pb-12">
+    <div className="bg-gradient-to-b from-[#17325D] to-[#102444] p-6 sm:p-7 rounded-3xl shadow-2xl border border-blue-400/25">
+                                                                {!isLoginView ? (
                                         <div className="flex flex-col items-center mb-3">
                                             <div onClick={() => signupFileInputRef.current.click()} className="w-16 h-16 rounded-full border-2 border-white/40 bg-white/10 flex items-center justify-center cursor-pointer overflow-hidden relative group shadow-inner">
                                                 {signupImagePreview ? (
@@ -1263,7 +1263,7 @@ useEffect(() => {
 
                                     {authError && <div className="bg-red-500/20 border border-red-500/50 text-red-200 text-[10px] font-bold rounded-lg p-2 mb-3 text-center">{authError}</div>}
 
-                                    <form onSubmit={handleAuth} className="space-y-3">
+<form onSubmit={handleAuth} className="space-y-3.5 pt-1">
                                         {!isLoginView && (
                                             <>
                                                 <div><input type="text" required placeholder="الاسم الرباعي" value={authData.name} onChange={e=>setAuthData({...authData, name: e.target.value})} className="w-full bg-slate-50 border border-transparent px-3 py-2.5 rounded-xl text-xs font-bold text-navy focus:border-blue-400 placeholder-slate-400" /></div>
