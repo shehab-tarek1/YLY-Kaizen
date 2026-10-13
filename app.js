@@ -37,8 +37,8 @@ if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// تفعيل ميزة التخزين المؤقت في المتصفح لفتح الموقع لحظياً دون انتظار
-db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+//  السطر الجديد (كاش محلي سريع ومباشر دون تأخير):
+db.enablePersistence().catch(() => {});
 
 const getInitials = (name) => {
     if (!name || typeof name !== 'string') return 'YL';
@@ -286,23 +286,20 @@ function YlyKaizenApp() {
         toastTimer.current = setTimeout(() => setToast(null), 2600);
     }, []);
 
-// --- كود إخفاء شاشة التحميل عند اكتمال البيانات ---
+//  الكود الجديد (فتح فوري للموقع بمجرد إقلاع الواجهة):
 useEffect(() => {
-    if (ideasLoaded) {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) {
-            overlay.style.transition = 'opacity 0.2s ease, visibility 0.2s ease';
-            overlay.style.opacity = '0';
-            overlay.style.visibility = 'hidden';
-
-            setTimeout(() => {
-                if (overlay && overlay.parentNode) {
-                    overlay.parentNode.removeChild(overlay);
-                }
-            }, 200);
-        }
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.style.transition = 'opacity 0.2s ease, visibility 0.2s ease';
+        overlay.style.opacity = '0';
+        overlay.style.visibility = 'hidden';
+        setTimeout(() => {
+            if (overlay && overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+        }, 200);
     }
-}, [ideasLoaded]);
+}, []);
 
 // استعادة موضع التمرير بدقة لكل صفحة ومنع توريث الهبوط
 useEffect(() => {
