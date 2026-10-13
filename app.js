@@ -37,7 +37,62 @@ if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-const getAvatar = (name) => `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'YLY')}&backgroundColor=002060,E30613`;
+// تفعيل ميزة التخزين المؤقت في المتصفح لفتح الموقع لحظياً دون انتظار
+db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+
+const getInitials = (name) => {
+    if (!name || typeof name !== 'string') return 'YL';
+    const clean = name.trim();
+    if (!clean) return 'YL';
+    const words = clean.split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+        return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return clean.slice(0, 2).toUpperCase();
+};
+
+const optimizeImageUrl = (url, size = 96) => {
+    if (!url) return '';
+    if (url.includes('cloudinary.com') && !url.includes('c_thumb')) {
+        return url.replace('/upload/', `/upload/c_thumb,w_${size},h_${size},g_face,q_auto,f_auto/`);
+    }
+    return url;
+};
+
+const getAvatar = (name) => '';
+
+// مكون الأفاتار فائق السرعة: يظهر الصورة إذا رُفعت، أو أول حرفين من الاسم بدقة دون صور بيضاء
+const UserAvatar = ({ src, name, size = "w-9 h-9", textClass = "text-xs", className = "", onClick }) => {
+    const [imgError, setImgError] = useState(false);
+    const isCustomImage = Boolean(src && !src.includes('dicebear.com') && !src.includes('initials/svg') && !imgError);
+
+    if (isCustomImage) {
+        return (
+            <div onClick={onClick} className={`rounded-full overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80 ${size} ${className}`}>
+                <img 
+                    src={optimizeImageUrl(src, 96)} 
+                    alt={name || ''} 
+                    onError={() => setImgError(true)} 
+                    loading="lazy" 
+                    decoding="async" 
+                    className="w-full h-full object-cover" 
+                />
+            </div>
+        );
+    }
+
+    const initials = getInitials(name);
+    return (
+        <div 
+            onClick={onClick} 
+            className={`rounded-full shrink-0 flex items-center justify-center font-black text-white bg-gradient-to-tr from-[#001845] via-[#002060] to-[#0A3D91] border border-blue-900/30 select-none shadow-xs ${size} ${className}`}
+        >
+            <span className={`${textClass} tracking-wider font-extrabold`} style={{ transform: 'translateY(-0.5px)' }}>
+                {initials}
+            </span>
+        </div>
+    );
+};
 
 // Cloudinary Upload Logic
 const uploadToCloudinary = (file, onProgress) => {
@@ -119,7 +174,7 @@ function YlyKaizenApp() {
     const [selectedIdeaId, setSelectedIdeaId] = useState(null);
     const [toast, setToast] = useState(null);
     const [fullScreenImage, setFullScreenImage] = useState(null);
-    
+
     // Search & Filter State
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -159,7 +214,7 @@ function YlyKaizenApp() {
     const [uploadProgress, setUploadProgress] = useState(0);
     const [selectedImageFile, setSelectedImageFile] = useState(null);
     const [viewProfileData, setViewProfileData] = useState(null);
-    
+
     const fileInputRef = useRef(null);
     const toastTimer = useRef(null);
 
@@ -174,15 +229,15 @@ useEffect(() => {
     if (ideasLoaded) {
         const overlay = document.getElementById('loadingOverlay');
         if (overlay) {
-            overlay.style.transition = 'opacity 0.3s ease, visibility 0.3s ease';
+            overlay.style.transition = 'opacity 0.2s ease, visibility 0.2s ease';
             overlay.style.opacity = '0';
             overlay.style.visibility = 'hidden';
-            
+
             setTimeout(() => {
-                if (overlay.parentNode) {
+                if (overlay && overlay.parentNode) {
                     overlay.parentNode.removeChild(overlay);
                 }
-            }, 300);
+            }, 200);
         }
     }
 }, [ideasLoaded]);
@@ -221,18 +276,21 @@ useEffect(() => {
     }, []);
 
     useEffect(() => {
-        const unsubscribe = db.collection('ideas').orderBy('createdAt', 'desc').onSnapshot(
-            snapshot => {
-                const fetchedIdeas = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    upvoters: doc.data().upvoters || []
-                }));
-                setIdeas(fetchedIdeas);
-                setIdeasLoaded(true);
-            },
-            err => { console.error(err); setIdeasLoaded(true); }
-        );
+        const unsubscribe = db.collection('ideas')
+            .orderBy('createdAt', 'desc')
+            .limit(35)
+            .onSnapshot(
+                snapshot => {
+                    const fetchedIdeas = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        upvoters: doc.data().upvoters || []
+                    }));
+                    setIdeas(fetchedIdeas);
+                    setIdeasLoaded(true);
+                },
+                err => { console.error(err); setIdeasLoaded(true); }
+            );
         return () => unsubscribe();
     }, []);
 
@@ -319,7 +377,7 @@ useEffect(() => {
 
                 const res = await auth.createUserWithEmailAndPassword(fakeEmail, authData.password);
                 await res.user.updateProfile({ displayName: cleanName, photoURL: avatarUrl });
-                
+
                 const profileObj = {
                     name: cleanName,
                     phone: phone,
@@ -377,7 +435,7 @@ useEffect(() => {
             if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
 
             await user.updateProfile({ displayName: cleanName, photoURL: finalAvatarUrl });
-            
+
             const updatedData = {
                 name: cleanName,
                 phone: cleanPhone,
@@ -386,7 +444,7 @@ useEffect(() => {
                 avatar: finalAvatarUrl,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
-            
+
             await db.collection('users').doc(user.uid).set(updatedData, { merge: true });
 
             // Batch update ideas
@@ -454,7 +512,7 @@ useEffect(() => {
         try {
             const authorName = user.displayName || userProfile?.name || "عضو YLY";
             const authorAvatar = user.photoURL || userProfile?.avatar || getAvatar(authorName);
-            
+
             await db.collection('ideas').add({
                 title: newIdea.title.trim(),
                 problem: newIdea.problem.trim(),
@@ -485,7 +543,7 @@ useEffect(() => {
     const handleAddComment = async (ideaId) => {
         const commentText = newComment.trim();
         if (!commentText || !user || isCommenting) return;
-        
+
         setNewComment("");
         setIsCommenting(true);
 
@@ -517,7 +575,7 @@ useEffect(() => {
     const openProfile = async (name, avatar, committee, uid, e) => {
         if (e) e.stopPropagation();
         setIsEditingProfile(false);
-        
+
         // Show initial view immediately
         setViewProfileData({
             name, uid, avatar: avatar || getAvatar(name), committee: committee || "عضو",
@@ -550,7 +608,7 @@ useEffect(() => {
     };
 
     const selectedIdea = useMemo(() => ideas.find(i => i.id === selectedIdeaId), [ideas, selectedIdeaId]);
-    
+
     // Show bottom nav on main pages, hide when viewing other users' profiles or details
     const isVisitingOtherProfile = activeTab === 'profile' && viewProfileData && (!user || viewProfileData.uid !== user?.uid);
     const showBottomNav = ['home', 'leaderboard', 'library'].includes(activeTab) || (activeTab === 'profile' && !isVisitingOtherProfile);
@@ -559,13 +617,13 @@ useEffect(() => {
         const stage = STATUS_STAGES.find(s => s.id === status) || STATUS_STAGES[0];
         let styles = 'bg-slate-50 text-slate-600 border-slate-200';
         let icon = <Clock size={11} />;
-        
+
         if(status === 'standardized') { styles = 'bg-emerald-50 text-emerald-700 border-emerald-200'; icon = <Award size={11} />; }
         else if(status === 'implemented') { styles = 'bg-blue-50 text-blue-700 border-blue-200'; icon = <CheckCircle2 size={11} />; }
         else if(status === 'experiment' || status === 'measuring') { styles = 'bg-orange-50 text-orange-700 border-orange-200'; icon = <TrendingUp size={11} />; }
         else if(status === 'approved') { styles = 'bg-amber-50 text-amber-700 border-amber-200'; icon = <CheckCircle2 size={11} />; }
         else if(status === 'rejected') { styles = 'bg-red-50 text-red-600 border-red-200'; icon = <XCircle size={11} />; }
-        
+
         return (
             <span className={`px-2 py-0.5 text-[10px] md:text-[11px] font-bold rounded-full border flex items-center gap-1 shrink-0 ${styles}`}>
                 {icon} {stage.label}
@@ -613,10 +671,10 @@ useEffect(() => {
                             </div>
                         </div>
                     )}
-                    
+
                     {user ? (
-                        <button onClick={() => openProfile(user.displayName, user.photoURL || userProfile?.avatar || getAvatar(user.displayName), userProfile?.committee, user.uid)} className="w-8 h-8 rounded-full flex items-center justify-center border border-white/30 overflow-hidden bg-white/10">
-                            <img src={user.photoURL || userProfile?.avatar || getAvatar(user.displayName)} className="w-full h-full object-cover" alt="" />
+                        <button onClick={() => openProfile(user.displayName, user.photoURL || userProfile?.avatar, userProfile?.committee, user.uid)} className="w-8 h-8 rounded-full flex items-center justify-center border border-white/30 overflow-hidden bg-white/10 active:scale-95 transition-transform">
+                            <UserAvatar src={user.photoURL || userProfile?.avatar} name={user.displayName} size="w-full h-full" textClass="text-[10px]" />
                         </button>
                     ) : (
                         activeTab !== 'auth' && (
@@ -631,11 +689,11 @@ useEffect(() => {
             {/* Main Content Area */}
             <main className={`flex-1 overflow-y-auto pt-[70px] px-3.5 hide-scroll relative z-10 
                 ${showBottomNav ? 'pb-[80px]' : activeTab === 'idea-details' ? 'pb-0' : 'pb-6'}`}>
-                
+
                 {/* 1. KAIZEN BOARD */}
                 {activeTab === 'home' && (
                     <div className="max-w-xl mx-auto space-y-3.5 pb-10">
-                        
+
                         {/* Welcome Card */}
                         <div className="bg-[#001845] rounded-3xl p-5 text-white shadow-lg relative overflow-hidden mb-2 animate-fade-in border border-blue-900/50">
                             <div className="absolute -left-4 -top-4 opacity-10"><Target size={120} /></div>
@@ -747,52 +805,52 @@ useEffect(() => {
                         {filteredAndSortedIdeas.map(idea => {
                             const isUpvoted = user && (idea.upvoters || []).includes(user.uid);
                             return (
-                                <div key={idea.id} className="animate-slide-up p-[1px] rounded-[17px] bg-gradient-to-br from-[#001845] via-[#002060] to-blue-300/50 shadow-sm cursor-pointer active:scale-[0.99] transition-transform">
-                                    <article onClick={() => { setSelectedIdeaId(idea.id); setActiveTab('idea-details'); }} className="bg-white rounded-2xl overflow-hidden h-full">
-                                        <div className="p-4">
-                                            <div className="flex justify-between items-start mb-3 gap-2">
-                                                <div className="flex items-center gap-2.5 hover:opacity-85 min-w-0" onClick={(e) => { e.stopPropagation(); setFullScreenImage(idea.avatar); }}>
-                                                    <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
-                                                        <img src={idea.avatar} className="w-full h-full object-cover" alt="" />
-                                                    </div>
-                                                    <div className="min-w-0" onClick={(e) => { e.stopPropagation(); openProfile(idea.author, idea.avatar, idea.authorCommittee, idea.authorId, e); }}>
-                                                        <h3 className="font-bold text-slate-900 text-xs truncate">{idea.author}</h3>
-                                                        <span className="text-[9px] font-bold text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-100/70 inline-block mt-0.5 truncate">
-                                                            اللجنة المعنية: {idea.committee}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-col items-end gap-1 shrink-0">
-                                                    <span className="text-[9px] font-bold text-slate-400">{idea.timeAgo}</span>
-                                                    <StatusPill status={idea.status} />
+                                <article 
+                                    key={idea.id} 
+                                    onClick={() => { setSelectedIdeaId(idea.id); setActiveTab('idea-details'); }} 
+                                    className="animate-slide-up rounded-2xl border-[1.5px] border-[#002060]/30 bg-[#FAFBFD] shadow-[0_3px_12px_rgba(0,32,96,0.06)] hover:border-[#002060]/60 cursor-pointer active:scale-[0.99] transition-all overflow-hidden"
+                                >
+                                    <div className="p-4">
+                                        <div className="flex justify-between items-start mb-3 gap-2">
+                                            <div className="flex items-center gap-2.5 hover:opacity-85 min-w-0" onClick={(e) => { e.stopPropagation(); openProfile(idea.author, idea.avatar, idea.authorCommittee, idea.authorId, e); }}>
+                                                <UserAvatar src={idea.avatar} name={idea.author} size="w-9 h-9" textClass="text-[11px]" />
+                                                <div className="min-w-0">
+                                                    <h3 className="font-black text-slate-900 text-xs truncate leading-snug">{idea.author}</h3>
+                                                    <span className="text-[9px] font-black text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-200/70 inline-block mt-0.5 truncate">
+                                                        اللجنة المعنية: {idea.committee}
+                                                    </span>
                                                 </div>
                                             </div>
-
-                                            <h2 className="text-sm font-black text-[#002060] mb-2 leading-snug">{idea.title}</h2>
-
-                                            <div className="space-y-1.5">
-                                                <div className="bg-red-50/50 rounded-xl p-2.5 border border-red-100/50">
-                                                    <span className="text-[10px] font-bold text-ylyred block mb-0.5">المشكلة الحالية:</span>
-                                                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">{idea.problem}</p>
-                                                </div>
-                                                <div className="bg-blue-50/50 rounded-xl p-2.5 border border-blue-100/50">
-                                                    <span className="text-[10px] font-bold text-[#002060] block mb-0.5">الحل المقترح (كايزن):</span>
-                                                    <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-medium">{idea.solution}</p>
-                                                </div>
+                                            <div className="flex flex-col items-end gap-1 shrink-0">
+                                                <span className="text-[9px] font-bold text-slate-500">{idea.timeAgo}</span>
+                                                <StatusPill status={idea.status} />
                                             </div>
                                         </div>
 
-                                        <div className="px-4 py-2 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between">
-                                            <button onClick={(e) => handleUpvote(idea.id, e)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-colors border ${isUpvoted ? 'bg-[#002060] text-white border-[#002060]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
-                                                {pendingVotes[idea.id] ? <span className="spinner"></span> : <Flame size={13} className={isUpvoted ? "text-orange-400 fill-orange-400" : "text-slate-400"} />}
-                                                <span>{idea.upvotes || 0} دعم</span>
-                                            </button>
-                                            <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-[#002060] bg-blue-50/70 border border-blue-100/60 rounded-xl">
-                                                <MessageSquare size={13} /> <span>{idea.commentsList?.length || 0} تعليق</span>
+                                        <h2 className="text-sm font-black text-[#001845] mb-2 leading-snug tracking-tight">{idea.title}</h2>
+
+                                        <div className="space-y-2">
+                                            <div className="bg-[#FFF5F5] rounded-xl p-2.5 border-[1.75px] border-red-200/90 shadow-[0_1px_4px_rgba(227,6,19,0.04)]">
+                                                <span className="text-[10px] font-black text-ylyred block mb-0.5">المشكلة الحالية:</span>
+                                                <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-semibold">{idea.problem}</p>
+                                            </div>
+                                            <div className="bg-[#F0F5FF] rounded-xl p-2.5 border-[1.75px] border-blue-200/90 shadow-[0_1px_4px_rgba(0,32,96,0.04)]">
+                                                <span className="text-[10px] font-black text-[#002060] block mb-0.5">الحل المقترح (كايزن):</span>
+                                                <p className="text-xs text-slate-800 line-clamp-2 leading-relaxed font-semibold">{idea.solution}</p>
                                             </div>
                                         </div>
-                                    </article>
-                                </div>
+                                    </div>
+
+                                    <div className="px-4 py-2 bg-[#F1F5F9]/60 border-t border-slate-200/70 flex items-center justify-between">
+                                        <button onClick={(e) => handleUpvote(idea.id, e)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs transition-colors border ${isUpvoted ? 'bg-[#002060] text-white border-[#002060]' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                                            {pendingVotes[idea.id] ? <span className="spinner"></span> : <Flame size={13} className={isUpvoted ? "text-orange-400 fill-orange-400" : "text-slate-400"} />}
+                                            <span>{idea.upvotes || 0} دعم</span>
+                                        </button>
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-black text-[#002060] bg-blue-50/80 border border-blue-200/80 rounded-xl">
+                                            <MessageSquare size={13} /> <span>{idea.commentsList?.length || 0} تعليق</span>
+                                        </div>
+                                    </div>
+                                </article>
                             );
                         })}
                         <div className="h-6" aria-hidden="true"></div>
@@ -803,19 +861,19 @@ useEffect(() => {
                 {activeTab === 'idea-details' && selectedIdea && (
                     <div className="flex flex-col relative max-w-xl mx-auto min-h-[calc(100vh-70px)]">
                         <div className="flex-1 pb-20">
-                            <article className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200/60 mb-4 animate-fade-in">
+                            <article className="bg-[#FAFBFD] rounded-3xl p-5 shadow-[0_4px_16px_rgba(0,32,96,0.06)] border-[1.5px] border-[#002060]/30 mb-4 animate-fade-in">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-2.5 min-w-0">
-                                        <img src={selectedIdea.avatar} onClick={() => setFullScreenImage(selectedIdea.avatar)} className="w-10 h-10 rounded-full border border-slate-200 object-cover cursor-pointer" alt="" />
+                                        <UserAvatar src={selectedIdea.avatar} name={selectedIdea.author} size="w-10 h-10" textClass="text-xs" className="cursor-pointer" onClick={() => selectedIdea.avatar && !selectedIdea.avatar.includes('dicebear.com') && setFullScreenImage(selectedIdea.avatar)} />
                                         <div className="min-w-0" onClick={() => openProfile(selectedIdea.author, selectedIdea.avatar, selectedIdea.authorCommittee, selectedIdea.authorId)}>
-                                            <h3 className="font-bold text-slate-900 text-sm truncate cursor-pointer">{selectedIdea.author}</h3>
-                                            <span className="text-[10px] font-bold text-ylyred bg-red-50 px-1.5 py-0.5 rounded border border-red-100/70 inline-block mt-0.5">اللجنة المعنية: {selectedIdea.committee}</span>
+                                            <h3 className="font-black text-slate-900 text-sm truncate cursor-pointer leading-snug">{selectedIdea.author}</h3>
+                                            <span className="text-[10px] font-black text-ylyred bg-red-50 px-1.5 py-0.5 rounded border border-red-200/70 inline-block mt-0.5">اللجنة المعنية: {selectedIdea.committee}</span>
                                         </div>
                                     </div>
                                     <StatusPill status={selectedIdea.status} />
                                 </div>
 
-                                <h2 className="text-base font-black text-navy mb-4 leading-snug">{selectedIdea.title}</h2>
+                                <h2 className="text-base font-black text-[#001845] mb-4 leading-snug tracking-tight">{selectedIdea.title}</h2>
 
                                 {/* Workflow Timeline */}
                                 <div className="mb-6 relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
@@ -846,13 +904,13 @@ useEffect(() => {
                                 </div>
 
                                 <div className="space-y-3">
-                                    <div className="bg-red-50/50 p-3 rounded-2xl border border-red-100">
+                                    <div className="bg-[#FFF5F5] p-3 rounded-2xl border-[1.75px] border-red-200/90 shadow-[0_1px_4px_rgba(227,6,19,0.04)]">
                                         <h4 className="text-[11px] font-black text-ylyred mb-1">الوضع الحالي (المشكلة)</h4>
-                                        <p className="text-xs text-slate-700 font-medium leading-relaxed">{selectedIdea.problem}</p>
+                                        <p className="text-xs text-slate-800 font-semibold leading-relaxed">{selectedIdea.problem}</p>
                                     </div>
-                                    <div className="bg-blue-50/50 p-3 rounded-2xl border border-blue-100">
-                                        <h4 className="text-[11px] font-black text-blue-600 mb-1">الحل المقترح (الكايزن)</h4>
-                                        <p className="text-xs text-slate-700 font-medium leading-relaxed">{selectedIdea.solution}</p>
+                                    <div className="bg-[#F0F5FF] p-3 rounded-2xl border-[1.75px] border-blue-200/90 shadow-[0_1px_4px_rgba(0,32,96,0.04)]">
+                                        <h4 className="text-[11px] font-black text-[#002060] mb-1">الحل المقترح (الكايزن)</h4>
+                                        <p className="text-xs text-slate-800 font-semibold leading-relaxed">{selectedIdea.solution}</p>
                                     </div>
                                     {selectedIdea.results && (
                                         <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 text-center">
@@ -881,13 +939,13 @@ useEffect(() => {
                                     ) : (
                                         selectedIdea.commentsList.map(comment => (
                                             <div key={comment.id} className="flex gap-2 animate-fade-in">
-                                                <img src={comment.avatar} onClick={() => setFullScreenImage(comment.avatar)} className="w-8 h-8 rounded-full border border-slate-200 mt-1 cursor-pointer object-cover" alt="" />
-                                                <div className="flex-1 bg-white p-3 rounded-2xl border border-slate-200/60 shadow-sm">
+                                                <UserAvatar src={comment.avatar} name={comment.author} size="w-8 h-8" textClass="text-[10px]" className="mt-1 cursor-pointer" onClick={() => comment.avatar && !comment.avatar.includes('dicebear.com') && setFullScreenImage(comment.avatar)} />
+                                                <div className="flex-1 bg-[#FAFBFD] p-3 rounded-2xl border border-slate-200/80 shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
                                                     <div className="flex items-center justify-between mb-1">
-                                                        <span className="font-bold text-slate-900 text-xs">{comment.author}</span>
-                                                        <span className="text-[9px] font-bold text-slate-400">{comment.time}</span>
+                                                        <span className="font-black text-slate-900 text-xs">{comment.author}</span>
+                                                        <span className="text-[9px] font-bold text-slate-500">{comment.time}</span>
                                                     </div>
-                                                    <p className="text-slate-700 text-xs font-medium leading-relaxed">{comment.text}</p>
+                                                    <p className="text-slate-800 text-xs font-semibold leading-relaxed">{comment.text}</p>
                                                 </div>
                                             </div>
                                         ))
@@ -895,7 +953,7 @@ useEffect(() => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         {/* Sticky Comment Input */}
                         <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 p-2.5 pb-safe z-30 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] rounded-t-[20px]">
                             <div className="max-w-xl mx-auto flex items-center gap-2">
@@ -913,7 +971,7 @@ useEffect(() => {
                     <div className="animate-slide-up max-w-xl mx-auto pb-10">
                         <h2 className="font-black text-navy text-lg mb-1 flex items-center gap-1.5"><Plus size={20}/> طرح فكرة كايزن</h2>
                         <p className="text-[11px] text-slate-500 font-bold mb-3">تذكر: الهدف هو تحسين عملية حقيقية قابلة للقياس.</p>
-                        
+
                         <form onSubmit={handleSubmitIdea} className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200/60 space-y-3">
                             <div>
                                 <label className="text-[11px] font-black text-slate-700 block mb-1">عنوان الفكرة المبتكرة</label>
@@ -958,7 +1016,7 @@ useEffect(() => {
                             {topUsers.length === 0 && <p className="text-center text-xs font-bold text-slate-400 mt-10">لا يوجد أبطال بعد</p>}
                             {topUsers.map((usr, idx) => (
                                 <div key={idx} onClick={() => openProfile(usr.name, usr.avatar, usr.committee, usr.uid)} className="bg-white rounded-2xl p-3 flex items-center shadow-sm border border-slate-100 cursor-pointer hover:bg-slate-50 transition-all active:scale-[0.99]">
-                                    
+
                                     <div className="relative mr-2 shrink-0">
                                         <div className={`w-12 h-12 rounded-full p-[2.5px] ${
                                             idx === 0 ? 'bg-gradient-to-tr from-yellow-600 via-amber-300 to-yellow-500 shadow-md ring-2 ring-yellow-400/40' :
@@ -966,7 +1024,7 @@ useEffect(() => {
                                             idx === 2 ? 'bg-gradient-to-tr from-amber-800 via-amber-400 to-amber-700 shadow-sm ring-2 ring-amber-600/40' :
                                             'bg-gradient-to-tr from-[#001845] to-blue-400 p-[1.5px]'
                                         }`}>
-                                            <img src={usr.avatar} className="w-full h-full rounded-full object-cover bg-white" alt="" />
+                                            <UserAvatar src={usr.avatar} name={usr.name} size="w-full h-full" textClass="text-xs" />
                                         </div>
                                         <span className={`absolute -bottom-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white border-2 border-white shadow-xs ${
                                             idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-slate-500' : idx === 2 ? 'bg-amber-700' : 'bg-[#002060]'
@@ -1028,10 +1086,10 @@ useEffect(() => {
 
                             {!isEditingProfile ? (
                                 <>
-                                    <img src={viewProfileData.avatar} onClick={() => setFullScreenImage(viewProfileData.avatar)} className="w-20 h-20 mx-auto -mt-10 mb-3 rounded-full border-2 border-white shadow-md bg-slate-100 object-cover cursor-pointer" alt="" />
+                                    <UserAvatar src={viewProfileData.avatar} name={viewProfileData.name} size="w-20 h-20" textClass="text-2xl" className="mx-auto -mt-10 mb-3 border-2 border-white shadow-md cursor-pointer" onClick={() => viewProfileData.avatar && !viewProfileData.avatar.includes('dicebear.com') && setFullScreenImage(viewProfileData.avatar)} />
                                     <h2 className="text-base font-black text-navy mb-1">{viewProfileData.name}</h2>
                                     <span className="inline-block px-3 py-1 bg-red-50 text-ylyred text-[10px] font-bold rounded-lg border border-red-100/70 mb-4">لجنة: {viewProfileData.committee}</span>
-                                    
+
                                     {/* Phone & Gmail displayed for all visitors */}
                                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4 text-right space-y-2">
                                         <div className="flex justify-between text-xs">
@@ -1043,7 +1101,7 @@ useEffect(() => {
                                             <span className="font-bold text-slate-700 truncate max-w-[180px]" dir="ltr">{viewProfileData.email || 'غير مسجل'}</span>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
                                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                                             <span className="text-[10px] text-slate-400 font-bold block mb-1">الأفكار المطروحة</span>
@@ -1060,7 +1118,7 @@ useEffect(() => {
                             ) : (
                                 <div className="text-right pt-2 animate-fade-in relative z-0">
                                     <h3 className="text-sm font-black text-navy mb-4 text-center flex items-center justify-center gap-1.5"><Edit3 size={15}/> تعديل البروفايل</h3>
-                                    
+
                                     <div className="flex flex-col items-center mb-4 relative">
                                         <div className="w-20 h-20 rounded-full border-2 border-white shadow-md bg-slate-100 overflow-hidden relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>
                                             <img src={editProfileData.avatar} className="w-full h-full object-cover" alt="" />
@@ -1094,7 +1152,7 @@ useEffect(() => {
                 {activeTab === 'auth' && (
                             <div className="animate-fade-in max-w-[320px] mx-auto mt-6 pb-10">
                                 <div className="bg-[#001845] p-5 rounded-3xl shadow-xl border border-blue-900/50">
-                                    
+
                                     {!isLoginView ? (
                                         <div className="flex flex-col items-center mb-3">
                                             <div onClick={() => signupFileInputRef.current.click()} className="w-16 h-16 rounded-full border-2 border-white/40 bg-white/10 flex items-center justify-center cursor-pointer overflow-hidden relative group shadow-inner">
@@ -1123,7 +1181,7 @@ useEffect(() => {
                                     )}
 
                                     {authError && <div className="bg-red-500/20 border border-red-500/50 text-red-200 text-[10px] font-bold rounded-lg p-2 mb-3 text-center">{authError}</div>}
-                                    
+
                                     <form onSubmit={handleAuth} className="space-y-3">
                                         {!isLoginView && (
                                             <>
@@ -1172,7 +1230,7 @@ useEffect(() => {
                             </button>
                         </nav>
                     )}
-       
+
                 </div>
             );
         }
