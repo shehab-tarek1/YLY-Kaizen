@@ -6,10 +6,8 @@
 
     <title>نظام كايزن YLY | منصة التطوير المستمر</title>
 
-    <meta name="description" content="منصة كايزن YLY للتطوير المستمر. شارك أفكارك، حولها إلى واقع، وساهم في تطوير بيئة العمل والاتحاد من خلال نظام مؤسسي متكامل للتحسين المستمر.">
-    <meta name="keywords" content="كايزن, YLY, تطوير مستمر, تحسين بيئة العمل, وزارة الشباب والرياضة, Kaizen, Continuous Improvement, YLY Sharkia">
-    <meta name="author" content="YLY Kaizen Team">
-    <meta name="theme-color" content="#001845">
+    <meta name="description" content="منصة كايزن YLY للتطوير المستمر. شارك أفكارك، حولها إلى واقع، وساهم في تطوير بيئة العمل والاتحاد.">
+    <meta name="theme-color" content="#17325D">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -24,7 +22,6 @@
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
 
-    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="نظام كايزن YLY | منصة التطوير المستمر">
     <meta name="twitter:description" content="شارك أفكارك، حولها إلى واقع، وساهم في تطوير بيئة العمل من خلال نظام مؤسسي متكامل.">
@@ -34,7 +31,8 @@
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png">
     <link rel="apple-touch-icon" href="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png">
 
-    <!-- تسريع الاتصال المسبق بالخوادم -->
+    <!-- تسريع الاتصال المسبق بخوادم المكتبات والصور -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
@@ -45,36 +43,17 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: { navy: '#002060', ylyred: '#E30613' },
-                    keyframes: {
-                        fadeIn: { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
-                        slideUp: { '0%': { opacity: 0, transform: 'translateY(6px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
-                        popIn: { '0%': { opacity: 0, transform: 'scale(0.95) translateX(-50%)' }, '100%': { opacity: 1, transform: 'scale(1) translateX(-50%)' } },
-                    },
-                    animation: {
-                        'fade-in': 'fadeIn .18s ease-out both',
-                        'slide-up': 'slideUp .2s ease-out both',
-                        'pop-in': 'popIn .18s ease-out both',
-                    }
+                    colors: { navy: '#002060', ylyred: '#E30613' }
                 }
             }
         }
     </script>
 
-   <!-- React & ReactDOM (Cloudflare Fast CDN) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
-
-    <!-- Firebase Compat (v9) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
-
     <link rel="stylesheet" href="style.css">
 </head>
-<body style="background-color: #001845;" class="text-slate-800 antialiased selection:bg-[#002060] selection:text-white">
-    <!-- شاشة التحميل -->
+<body class="text-slate-800 antialiased selection:bg-[#002060] selection:text-white">
+
+    <!-- شاشة التحميل (تظهر فوراً في 0 ثانية وتمنع الشاشة البيضاء) -->
     <div id="loadingOverlay">
         <div class="spinner-box">
             <div class="modern-spinner"></div>
@@ -88,27 +67,26 @@
 
     <div id="root"></div>
 
+    <!-- المكتبات تعمل في الخلفية دون حجب ظهور شاشة التحميل -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+
+    <!-- Firebase Compat (v9) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+    <!-- تطبيق كايزن الرئيسي -->
     <script type="text/babel" src="app.js"></script>
 
-    <!-- كود إغلاق آمن لشاشة التحميل لضمان فتح الموقع فوراً دون انتظار -->
+    <!-- تفعيل السيرفس وركر للكاش السريع -->
     <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const overlay = document.getElementById('loadingOverlay');
-                if (overlay) {
-                    overlay.style.opacity = '0';
-                    overlay.style.visibility = 'hidden';
-                    setTimeout(() => overlay.remove(), 250);
-                }
-            }, 300);
-        });
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
     </script>
-<script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').catch(() => {});
-        });
-    }
-</script>
 </body>
 </html>
