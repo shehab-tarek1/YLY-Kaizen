@@ -906,7 +906,7 @@ useEffect(() => {
             </div>
         </div>
 
-        <h2 className="text-sm font-black text-[#001845] mb-1.5 leading-snug tracking-tight">{idea.title}</h2>
+        <div className="flex items-baseline gap-1.5 mb-1.5 -mt-1"><span className="text-[10.5px] font-bold text-slate-400 shrink-0">عنوان الفكرة:</span><h2 className="text-sm font-black text-[#001845] leading-snug tracking-tight">{idea.title}</h2></div>
 
         <div className="space-y-1.5">
             <div className="bg-[#FFF5F5] rounded-xl p-2.5 border-[1.75px] border-red-200/90 shadow-[0_1px_4px_rgba(227,6,19,0.04)]">
