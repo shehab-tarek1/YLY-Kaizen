@@ -61,10 +61,10 @@
         }
     </script>
 
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+   <!-- React & ReactDOM (Cloudflare Fast CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 
     <!-- Firebase Compat (v9) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -73,8 +73,7 @@
 
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="text-slate-800 antialiased selection:bg-[#002060] selection:text-white">
-
+<body style="background-color: #001845;" class="text-slate-800 antialiased selection:bg-[#002060] selection:text-white">
     <!-- شاشة التحميل -->
     <div id="loadingOverlay">
         <div class="spinner-box">
