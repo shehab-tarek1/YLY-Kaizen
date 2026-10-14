@@ -1085,7 +1085,7 @@ useEffect(() => {
                 {/* 4. LEADERBOARD */}
                 {activeTab === 'leaderboard' && (
                     <div className="animate-fade-in max-w-xl mx-auto pb-10">
-                        <div className="bg-gradient-to-br from-[#17325D] via-[#132A52] to-[#102444] rounded-3xl p-5 shadow-xl text-center text-white mb-4 border border-blue-400/25">
+                        <div className="rounded-3xl p-5 shadow-xl text-center text-white mb-4 border border-white/20 relative overflow-hidden bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `linear-gradient(rgba(10, 25, 47, 0.45), rgba(10, 25, 47, 0.65)), url('https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_1000,q_auto,f_auto/v1791976277/vkltjxombswnzhwbpvko.jpg')` }}>
                             <Award size={36} className="mx-auto text-yellow-400 mb-2" />
                             <h2 className="text-lg font-black">أبطال الكايزن</h2>
                             <p className="text-[10px] font-bold text-blue-200 mt-1">يتم احتساب النقاط بناءً على تأثير الفكرة ومراحل تنفيذها.</p>
