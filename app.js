@@ -883,43 +883,44 @@ useEffect(() => {
                         {filteredAndSortedIdeas.map(idea => {
                             const isUpvoted = user && (idea.upvoters || []).includes(user.uid);
                             return (
-                                <article 
-                                    key={idea.id} 
-                                    onClick={() => navigateTo('idea-details', { ideaId: idea.id })} 
-                                    className="animate-slide-up rounded-2xl border-[1.5px] border-[#002060]/30 bg-[#FAFBFD] shadow-[0_3px_12px_rgba(0,32,96,0.06)] hover:border-[#002060]/60 cursor-pointer active:scale-[0.99] transition-all overflow-hidden"
-                                >
-                                    <div className="p-4">
-                                        <div className="flex justify-between items-start mb-3 gap-2">
-                                            <div className="flex items-center gap-2.5 hover:opacity-85 min-w-0" onClick={(e) => { e.stopPropagation(); openProfile(idea.author, idea.avatar, idea.authorCommittee, idea.authorId, e); }}>
-                                                <UserAvatar src={idea.avatar} name={idea.author} size="w-9 h-9" textClass="text-[11px]" />
-                                                <div className="min-w-0">
-                                                    <h3 className="font-black text-slate-900 text-xs truncate leading-snug">{idea.author}</h3>
-                                                    <span className="text-[9px] font-black text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-200/70 inline-block mt-0.5 truncate">
-                                                        اللجنة المعنية: {idea.committee}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col items-end gap-1 shrink-0">
-                                                <span className="text-[9px] font-bold text-slate-500">{idea.timeAgo}</span>
-                                                <StatusPill status={idea.status} />
-                                            </div>
-                                        </div>
+                               //  الجزء الجديد (مسافات ملمومة وأنيقة ومتوازنة من كل الجهات):
+<article 
+    key={idea.id} 
+    onClick={() => navigateTo('idea-details', { ideaId: idea.id })} 
+    className="animate-slide-up rounded-2xl border-[1.5px] border-[#002060]/30 bg-[#FAFBFD] shadow-[0_3px_12px_rgba(0,32,96,0.06)] hover:border-[#002060]/60 cursor-pointer active:scale-[0.99] transition-all overflow-hidden"
+>
+    <div className="pt-3 px-3.5 pb-2.5">
+        <div className="flex justify-between items-start mb-1.5 gap-2">
+            <div className="flex items-center gap-2.5 hover:opacity-85 min-w-0" onClick={(e) => { e.stopPropagation(); openProfile(idea.author, idea.avatar, idea.authorCommittee, idea.authorId, e); }}>
+                <UserAvatar src={idea.avatar} name={idea.author} size="w-9 h-9" textClass="text-[11px]" />
+                <div className="min-w-0">
+                    <h3 className="font-black text-slate-900 text-xs truncate leading-snug">{idea.author}</h3>
+                    <span className="text-[9px] font-black text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-200/70 inline-block mt-0.5 truncate">
+                        اللجنة المعنية: {idea.committee}
+                    </span>
+                </div>
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+                <span className="text-[9px] font-bold text-slate-500">{idea.timeAgo}</span>
+                <StatusPill status={idea.status} />
+            </div>
+        </div>
 
-                                        <h2 className="text-sm font-black text-[#001845] mb-2 leading-snug tracking-tight">{idea.title}</h2>
+        <h2 className="text-sm font-black text-[#001845] mb-1.5 leading-snug tracking-tight">{idea.title}</h2>
 
-                                        <div className="space-y-2">
-                                            <div className="bg-[#FFF5F5] rounded-xl p-2.5 border-[1.75px] border-red-200/90 shadow-[0_1px_4px_rgba(227,6,19,0.04)]">
-                                                <span className="text-[10px] font-black text-ylyred block mb-0.5">المشكلة الحالية:</span>
-                                                <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-semibold">{idea.problem}</p>
-                                            </div>
-                                            <div className="bg-[#F0F5FF] rounded-xl p-2.5 border-[1.75px] border-blue-200/90 shadow-[0_1px_4px_rgba(0,32,96,0.04)]">
-                                                <span className="text-[10px] font-black text-[#002060] block mb-0.5">الحل المقترح (كايزن):</span>
-                                                <p className="text-xs text-slate-800 line-clamp-2 leading-relaxed font-semibold">{idea.solution}</p>
-                                            </div>
-                                        </div>
-                                    </div>
+        <div className="space-y-1.5">
+            <div className="bg-[#FFF5F5] rounded-xl p-2.5 border-[1.75px] border-red-200/90 shadow-[0_1px_4px_rgba(227,6,19,0.04)]">
+                <span className="text-[10px] font-black text-ylyred block mb-0.5">المشكلة الحالية:</span>
+                <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-semibold">{idea.problem}</p>
+            </div>
+            <div className="bg-[#F0F5FF] rounded-xl p-2.5 border-[1.75px] border-blue-200/90 shadow-[0_1px_4px_rgba(0,32,96,0.04)]">
+                <span className="text-[10px] font-black text-[#002060] block mb-0.5">الحل المقترح (كايزن):</span>
+                <p className="text-xs text-slate-800 line-clamp-2 leading-relaxed font-semibold">{idea.solution}</p>
+            </div>
+        </div>
+    </div>
 
-                                    <div className="px-4 py-2 bg-[#F1F5F9]/60 border-t border-slate-200/70 flex items-center justify-between">
+    <div className="px-3.5 py-2 bg-[#F1F5F9]/60 border-t border-slate-200/70 flex items-center justify-between">
                                         <button onClick={(e) => handleUpvote(idea.id, e)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs transition-colors border ${isUpvoted ? 'bg-[#002060] text-white border-[#002060]' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
                                             {pendingVotes[idea.id] ? <span className="spinner"></span> : <Flame size={13} className={isUpvoted ? "text-orange-400 fill-orange-400" : "text-slate-400"} />}
                                             <span>{idea.upvotes || 0} دعم</span>
