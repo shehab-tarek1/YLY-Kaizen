@@ -1044,43 +1044,46 @@ useEffect(() => {
                     </div>
                 )}
 
-                {/* 3. ADD IDEA FORM */}
-                {activeTab === 'add-idea' && (
-                    <div className="animate-slide-up max-w-xl mx-auto pb-10">
-                        <h2 className="font-black text-navy text-lg mb-1 flex items-center gap-1.5"><Plus size={20}/> طرح فكرة كايزن</h2>
-                        <p className="text-[11px] text-slate-500 font-bold mb-3">تذكر: الهدف هو تحسين عملية حقيقية قابلة للقياس.</p>
+ {/* 3. ADD IDEA FORM */}
+{activeTab === 'add-idea' && (
+    <div className="animate-slide-up max-w-xl mx-auto pb-10">
+        <div className="flex items-center justify-between gap-2 mb-2.5 px-1">
+            <h2 className="font-black text-navy text-base flex items-center gap-1.5 shrink-0"><Plus size={18}/> طرح فكرة كايزن</h2>
+            <p className="text-[10px] text-slate-500 font-bold truncate">الهدف: تحسين عملية حقيقية قابلة للقياس</p>
+        </div>
 
-                        <form onSubmit={handleSubmitIdea} className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200/60 space-y-3">
-                            <div>
-                                <label className="text-[11px] font-black text-slate-700 block mb-1">عنوان الفكرة المبتكرة</label>
-                                <input required type="text" value={newIdea.title} onChange={e=>setNewIdea({...newIdea, title: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-xs font-bold" placeholder="مثال: تحسين نظام الحضور.." />
-                            </div>
-                            <div>
-                                <label className="text-[11px] font-black text-ylyred block mb-1">الوضع الحالي (المشكلة)</label>
-                                <textarea required rows="2" value={newIdea.problem} onChange={e=>setNewIdea({...newIdea, problem: e.target.value})} className="w-full bg-red-50/40 border border-red-100 px-3 py-2 rounded-xl text-xs font-bold resize-none" placeholder="كيف تتم العملية الآن؟"></textarea>
-                            </div>
-                            <div>
-                                <label className="text-[11px] font-black text-blue-600 block mb-1">الحل المقترح (الكايزن)</label>
-                                <textarea required rows="2" value={newIdea.solution} onChange={e=>setNewIdea({...newIdea, solution: e.target.value})} className="w-full bg-blue-50/40 border border-blue-100 px-3 py-2 rounded-xl text-xs font-bold resize-none" placeholder="ما هو الحل؟"></textarea>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 pt-1">
-                                <div>
-                                    <label className="text-[11px] font-black text-slate-700 block mb-1">اللجنة المعنية بالتطبيق</label>
-                                    <CustomSelect value={newIdea.committee} options={COMMITTEES} onChange={(val) => setNewIdea({...newIdea, committee: val})} />
-                                </div>
-                                <div>
-                                    <label className="text-[11px] font-black text-slate-700 block mb-1">التأثير</label>
-                                    <CustomSelect value={newIdea.expectedImpact} options={[{label: 'عالي (High)', value: 'High'}, {label: 'متوسط (Medium)', value: 'Medium'}, {label: 'منخفض (Low)', value: 'Low'}]} onChange={(val) => setNewIdea({...newIdea, expectedImpact: val})} colorClass="text-emerald-700 bg-emerald-50 border-emerald-200" />
-                                </div>
-                            </div>
-                            <div className="pt-2 mb-10">
-                                <button type="submit" disabled={isSubmittingIdea} className="w-full bg-navy text-white font-bold py-3 rounded-xl shadow-sm flex justify-center items-center gap-2">
-                                    {isSubmittingIdea ? <span className="spinner"></span> : 'إرسال الفكرة للمراجعة'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                )}
+        <form onSubmit={handleSubmitIdea} className="bg-[#FAFBFD] rounded-3xl p-5 shadow-[0_3px_12px_rgba(0,32,96,0.06)] border-[1.5px] border-[#002060]/30 space-y-2.5">
+            <div>
+                <label className="text-[11px] font-black text-slate-700 block mb-0.5">عنوان الفكرة المبتكرة</label>
+                <input required type="text" value={newIdea.title} onChange={e=>setNewIdea({...newIdea, title: e.target.value})} className="w-full bg-white border border-slate-300/80 px-3 py-2 rounded-xl text-xs font-bold focus:border-[#002060]" placeholder="مثال: تحسين نظام الحضور.." />
+            </div>
+            <div>
+                <label className="text-[11px] font-black text-ylyred block mb-0.5">الوضع الحالي (المشكلة)</label>
+                <textarea required rows="2" value={newIdea.problem} onChange={e=>setNewIdea({...newIdea, problem: e.target.value})} className="w-full bg-red-50/40 border border-red-200 px-3 py-2 rounded-xl text-xs font-bold resize-none focus:border-red-400" placeholder="كيف تتم العملية الآن؟"></textarea>
+            </div>
+            <div>
+                <label className="text-[11px] font-black text-blue-600 block mb-0.5">الحل المقترح (الكايزن)</label>
+                <textarea required rows="2" value={newIdea.solution} onChange={e=>setNewIdea({...newIdea, solution: e.target.value})} className="w-full bg-blue-50/40 border border-blue-200 px-3 py-2 rounded-xl text-xs font-bold resize-none focus:border-blue-400" placeholder="ما هو الحل؟"></textarea>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+                <div>
+                    <label className="text-[11px] font-black text-slate-700 block mb-0.5">اللجنة المعنية بالتطبيق</label>
+                    <CustomSelect value={newIdea.committee} options={COMMITTEES} onChange={(val) => setNewIdea({...newIdea, committee: val})} colorClass="focus:border-[#002060] text-slate-800 bg-white border-slate-300/80" />
+                </div>
+                <div>
+                    <label className="text-[11px] font-black text-slate-700 block mb-0.5">التأثير المتوقع</label>
+                    <CustomSelect value={newIdea.expectedImpact} options={[{label: 'عالي (High)', value: 'High'}, {label: 'متوسط (Medium)', value: 'Medium'}, {label: 'منخفض (Low)', value: 'Low'}]} onChange={(val) => setNewIdea({...newIdea, expectedImpact: val})} colorClass="text-emerald-700 bg-emerald-50 border-emerald-300/80" />
+                </div>
+            </div>
+            <div className="pt-2 mb-10">
+                <button type="submit" disabled={isSubmittingIdea} className="w-full bg-navy hover:bg-[#001845] text-white font-black py-2.5 rounded-xl shadow-md flex justify-center items-center gap-2 transition-all active:scale-[0.99]">
+                    {isSubmittingIdea ? <span className="spinner"></span> : 'إرسال الفكرة للمراجعة'}
+                </button>
+            </div>
+        </form>
+    </div>
+)}           
+
 
                 {/* 4. LEADERBOARD */}
                 {activeTab === 'leaderboard' && (
