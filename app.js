@@ -290,14 +290,9 @@ function YlyKaizenApp() {
 useEffect(() => {
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
-        overlay.style.transition = 'opacity 0.2s ease, visibility 0.2s ease';
         overlay.style.opacity = '0';
         overlay.style.visibility = 'hidden';
-        setTimeout(() => {
-            if (overlay && overlay.parentNode) {
-                overlay.parentNode.removeChild(overlay);
-            }
-        }, 200);
+        overlay.remove();
     }
 }, []);
 
@@ -887,7 +882,7 @@ useEffect(() => {
 <article 
     key={idea.id} 
     onClick={() => navigateTo('idea-details', { ideaId: idea.id })} 
-    className="animate-slide-up rounded-2xl border-[1.5px] border-[#002060]/30 bg-[#FAFBFD] shadow-[0_3px_12px_rgba(0,32,96,0.06)] hover:border-[#002060]/60 cursor-pointer active:scale-[0.99] transition-all overflow-hidden"
+    className="rounded-2xl border-[1.5px] border-[#002060]/30 bg-[#FAFBFD] shadow-[0_3px_12px_rgba(0,32,96,0.06)] hover:border-[#002060]/60 cursor-pointer active:scale-[0.99] transition-all overflow-hidden"
 >
     <div className="pt-3 px-3.5 pb-2.5">
         <div className="flex justify-between items-start mb-1.5 gap-2">
@@ -1319,3 +1314,4 @@ useEffect(() => {
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<YlyKaizenApp />);
+
