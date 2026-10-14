@@ -1128,7 +1128,7 @@ useEffect(() => {
                 {/* 5. KNOWLEDGE LIBRARY */}
                 {activeTab === 'library' && (
                     <div className="animate-fade-in max-w-xl mx-auto space-y-3 pb-10">
-                        <div className="bg-gradient-to-br from-[#17325D] via-[#132A52] to-[#102444] border border-blue-400/25 p-5 rounded-3xl mb-4 text-center text-white shadow-xl">
+                        <div className="rounded-3xl p-5 shadow-xl text-center text-white mb-4 border border-white/20 relative overflow-hidden bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `linear-gradient(rgba(10, 25, 47, 0.45), rgba(10, 25, 47, 0.65)), url('https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_1000,q_auto,f_auto/v1791976277/vkltjxombswnzhwbpvko.jpg')` }}>
                             <BookOpen size={32} className="text-blue-300 mx-auto mb-2" />
                             <h2 className="font-black text-white text-base">مكتبة الكايزن المعتمدة</h2>
                             <p className="text-[10px] text-blue-200 font-bold mt-1">الأفكار التي أثبتت نجاحها وتم تحويلها لـ Standard.</p>
