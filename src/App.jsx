@@ -1,0 +1,1371 @@
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
+import 'firebase/compat/auth';
+
+// --- SVGs & Icons ---
+const Plus = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
+const Flame = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>;
+const Award = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>;
+const Home = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+const CheckCircle2 = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
+const AlertCircle = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+const XCircle = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>;
+const Clock = ({size=14, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+const TrendingUp = ({size=14, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
+const MessageSquare = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
+const User = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+const ChevronDown = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6"/></svg>;
+const ArrowRight = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>;
+const Send = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>;
+const LogOut = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>;
+const Edit3 = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>;
+const BookOpen = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+const Target = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
+const Camera = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>;
+const X = ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const Search = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+const Filter = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
+
+// --- Firebase Config ---
+const firebaseConfig = {
+    apiKey: "AIzaSyA3UqEDpP2Llt7ZkloqmlURGULdKEiWF3o",
+    authDomain: "yly-2026.firebaseapp.com",
+    projectId: "yly-2026",
+    storageBucket: "yly-2026.firebasestorage.app",
+    messagingSenderId: "599868603298",
+    appId: "1:599868603298:web:f66010961895c707cb10fb"
+};
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+db.enablePersistence().catch(() => {});
+
+const getInitials = (name) => {
+    if (!name || typeof name !== 'string') return 'YL';
+    const clean = name.trim();
+    if (!clean) return 'YL';
+    const words = clean.split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+        return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return clean.slice(0, 2).toUpperCase();
+};
+
+const optimizeImageUrl = (url, size = 180) => {
+    if (!url || typeof url !== 'string') return '';
+    if (url.includes('cloudinary.com') && !url.includes('c_limit') && !url.includes('c_fill') && !url.includes('c_thumb')) {
+        return url.replace('/upload/', `/upload/c_limit,w_${size},q_auto,f_auto/`);
+    }
+    return url;
+};
+
+const getAvatar = (name) => '';
+
+const UserAvatar = ({ src, name, size = "w-9 h-9", textClass = "text-xs", className = "", onClick }) => {
+    const [imgError, setImgError] = useState(false);
+
+    useEffect(() => {
+        setImgError(false);
+    }, [src]);
+
+    const isCustomImage = Boolean(src && !src.includes('dicebear.com') && !src.includes('initials/svg') && !imgError);
+
+    if (isCustomImage) {
+        return (
+            <div onClick={onClick} className={`rounded-full overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80 ${size} ${className}`}>
+                <img 
+                    src={optimizeImageUrl(src, 180)} 
+                    alt={name || ''} 
+                    onError={() => setImgError(true)} 
+                    loading="lazy" 
+                    decoding="async" 
+                    className="w-full h-full object-cover" 
+                />
+            </div>
+        );
+    }
+
+    const initials = getInitials(name);
+    return (
+        <div 
+            onClick={onClick} 
+            className={`rounded-full shrink-0 flex items-center justify-center font-black text-white bg-gradient-to-tr from-[#001845] via-[#002060] to-[#0A3D91] border border-blue-900/30 select-none shadow-xs ${size} ${className}`}
+        >
+            <span className={`${textClass} tracking-wider font-extrabold`} style={{ transform: 'translateY(-0.5px)' }}>
+                {initials}
+            </span>
+        </div>
+    );
+};
+
+const uploadToCloudinary = (file, onProgress) => {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'https://api.cloudinary.com/v1_1/dsxrjmcxs/image/upload');
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable && onProgress) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                onProgress(percent);
+            }
+        };
+        xhr.onload = () => {
+            if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                resolve(response.secure_url);
+            } else {
+                reject('Upload failed');
+            }
+        };
+        xhr.onerror = () => reject('Network error');
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('upload_preset', 'my_public_preset');
+        xhr.send(fd);
+    });
+};
+
+const COMMITTEES = ['HR', 'PR', 'OR', 'SM', 'Training'];
+
+const SCORE_MAP = {
+    'submitted': 5, 'under_review': 5, 'approved': 20, 
+    'experiment': 30, 'measuring': 30, 'implemented': 50, 'standardized': 75, 'rejected': 0
+};
+
+const STATUS_STAGES = [
+    { id: 'submitted', label: 'مُقدمة' },
+    { id: 'under_review', label: 'قيد المراجعة' },
+    { id: 'approved', label: 'مقبولة مبدئياً' },
+    { id: 'experiment', label: 'جاري التجربة' },
+    { id: 'measuring', label: 'قياس النتائج' },
+    { id: 'implemented', label: 'مكتمل' },
+    { id: 'standardized', label: 'تم التعميم (Standard)' },
+    { id: 'rejected', label: 'مرفوضة' }
+];
+
+const CustomSelect = ({ value, options, onChange, placeholder, colorClass="focus:border-[#002060] text-slate-800 bg-slate-50 border-slate-200" }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+        <div className="relative w-full">
+            <div onClick={() => setIsOpen(!isOpen)} 
+                 className={`w-full border px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer flex justify-between items-center transition-colors ${colorClass}`}>
+                <span className="truncate">{value || placeholder}</span>
+                <ChevronDown size={15} className={`transition-transform duration-200 text-slate-400 shrink-0 mr-1 ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+            {isOpen && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-xl z-50 overflow-hidden dropdown-enter max-h-48 overflow-y-auto">
+                        {options.map(opt => {
+                            const val = typeof opt === 'object' ? opt.value : opt;
+                            const lbl = typeof opt === 'object' ? opt.label : opt;
+                            return (
+                                <div key={val} onClick={() => { onChange(val); setIsOpen(false); }} 
+                                     className={`px-3 py-2.5 text-xs font-bold cursor-pointer transition-colors border-b last:border-b-0 border-slate-50 hover:bg-slate-50 ${value === val ? 'bg-blue-50/50 text-[#002060]' : 'text-slate-600'}`}>
+                                    {lbl}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+function YlyKaizenApp() {
+    const [activeTab, setActiveTab] = useState('home');
+    const [selectedIdeaId, setSelectedIdeaId] = useState(null);
+    const [toast, setToast] = useState(null);
+    const [fullScreenImage, setFullScreenImage] = useState(null);
+
+    const mainContainerRef = useRef(null);
+    const tabScrollPositions = useRef({});
+
+    const navigateTo = useCallback((tab, extra = {}) => {
+        if (mainContainerRef.current) {
+            tabScrollPositions.current[activeTab] = mainContainerRef.current.scrollTop;
+        }
+        if (extra.ideaId !== undefined) setSelectedIdeaId(extra.ideaId);
+        if (extra.profileData !== undefined) setViewProfileData(extra.profileData);
+        setActiveTab(tab);
+    }, [activeTab]);
+
+    const goBack = useCallback(() => {
+        if (fullScreenImage) {
+            setFullScreenImage(null);
+            return;
+        }
+        if (activeTab !== 'home') {
+            navigateTo('home');
+        }
+    }, [fullScreenImage, activeTab, navigateTo]);
+
+    const [searchTerm, setSearchTerm] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [filterStatus, setFilterStatus] = useState("الكل");
+    const [filterCommittee, setFilterCommittee] = useState("الكل");
+    const [sortBy, setSortBy] = useState("newest");
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    const [newComment, setNewComment] = useState("");
+    const [isCommenting, setIsCommenting] = useState(false);
+    const [pendingVotes, setPendingVotes] = useState({});
+
+    const [ideas, setIdeas] = useState([]);
+    const [ideasLoaded, setIdeasLoaded] = useState(false);
+    const [newIdea, setNewIdea] = useState({ title: '', problem: '', solution: '', committee: 'HR', expectedImpact: 'High' });
+    const [isSubmittingIdea, setIsSubmittingIdea] = useState(false);
+
+    const [user, setUser] = useState(null);
+    const [userProfile, setUserProfile] = useState(null);
+    const [isLoginView, setIsLoginView] = useState(true);
+    const [authData, setAuthData] = useState({ name: '', phone: '', email: '', password: '', committee: 'HR' });
+    const [authLoading, setAuthLoading] = useState(false);
+    const [authError, setAuthError] = useState('');
+
+    const [signupImageFile, setSignupImageFile] = useState(null);
+    const [signupImagePreview, setSignupImagePreview] = useState(null);
+    const signupFileInputRef = useRef(null);
+
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [editProfileData, setEditProfileData] = useState({ name: '', phone: '', email: '', committee: 'HR', avatar: '' });
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [selectedImageFile, setSelectedImageFile] = useState(null);
+    const [viewProfileData, setViewProfileData] = useState(null);
+
+    const fileInputRef = useRef(null);
+    const toastTimer = useRef(null);
+
+    const showToast = useCallback((message, type = 'success') => {
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        setToast({ message, type });
+        toastTimer.current = setTimeout(() => setToast(null), 2600);
+    }, []);
+
+    // إخفاء فوري لشاشة التحميل
+    useEffect(() => {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.style.transition = 'opacity 0.2s ease, visibility 0.2s ease';
+            overlay.style.opacity = '0';
+            overlay.style.visibility = 'hidden';
+            setTimeout(() => {
+                if (overlay && overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 200);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (mainContainerRef.current) {
+            const savedScroll = tabScrollPositions.current[activeTab] || 0;
+            mainContainerRef.current.scrollTop = savedScroll;
+        }
+    }, [activeTab, selectedIdeaId]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+            setUser(currentUser);
+            if (currentUser) {
+                try {
+                    const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                    if (userDoc.exists) {
+                        const data = userDoc.data();
+                        setUserProfile(data);
+                        setEditProfileData({
+                            name: data.name || currentUser.displayName || '',
+                            phone: data.phone || '',
+                            email: data.email || '',
+                            committee: data.committee || 'HR',
+                            avatar: data.avatar || ''
+                        });
+                    }
+                } catch(e) { console.error(e); }
+            } else {
+                setUserProfile(null);
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        const unsubscribe = db.collection('ideas')
+            .orderBy('createdAt', 'desc')
+            .limit(35)
+            .onSnapshot(
+                snapshot => {
+                    const fetchedIdeas = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        upvoters: doc.data().upvoters || []
+                    }));
+                    setIdeas(fetchedIdeas);
+                    setIdeasLoaded(true);
+                },
+                err => { console.error(err); setIdeasLoaded(true); }
+            );
+        return () => unsubscribe();
+    }, []);
+
+    const filteredAndSortedIdeas = useMemo(() => {
+        let result = [...ideas];
+
+        if (debouncedSearch.trim()) {
+            const q = debouncedSearch.toLowerCase().trim();
+            result = result.filter(i => 
+                (i.title && i.title.toLowerCase().includes(q)) ||
+                (i.author && i.author.toLowerCase().includes(q)) ||
+                (i.problem && i.problem.toLowerCase().includes(q)) ||
+                (i.solution && i.solution.toLowerCase().includes(q))
+            );
+        }
+
+        if (filterStatus !== 'الكل') {
+            result = result.filter(i => i.status === filterStatus);
+        }
+
+        if (filterCommittee !== 'الكل') {
+            result = result.filter(i => i.committee === filterCommittee);
+        }
+
+        if (sortBy === 'oldest') {
+            result.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+        } else {
+            result.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        }
+
+        return result;
+    }, [ideas, debouncedSearch, filterStatus, filterCommittee, sortBy]);
+
+    const topUsers = useMemo(() => {
+        const userStats = {};
+        ideas.forEach(idea => {
+            if (!userStats[idea.authorId]) {
+                userStats[idea.authorId] = {
+                    name: idea.author,
+                    avatar: idea.avatar || '',
+                    uid: idea.authorId,
+                    committee: idea.authorCommittee || 'عضو',
+                    score: 0
+                };
+            }
+            userStats[idea.authorId].score += (SCORE_MAP[idea.status] || 0);
+        });
+        return Object.values(userStats)
+            .sort((a, b) => b.score - a.score)
+            .map((usr, index) => ({ ...usr, rank: index + 1 }))
+            .slice(0, 10);
+    }, [ideas]);
+
+    const handleAuth = async (e) => {
+        e.preventDefault();
+        setAuthError('');
+        let phone = authData.phone.trim();
+        if (phone.startsWith('0')) phone = phone.substring(1);
+        if (phone.length !== 10) { setAuthError('رقم الهاتف يجب أن يتكون من 10 أرقام (بدون الصفر)'); return; }
+        if (authData.password.length < 6) { setAuthError('كلمة المرور 6 أحرف على الأقل'); return; }
+
+        const fakeEmail = `${phone}@yly.com`;
+        setAuthLoading(true);
+        try {
+            if (isLoginView) {
+                await auth.signInWithEmailAndPassword(fakeEmail, authData.password);
+                showToast('تم تسجيل الدخول بنجاح');
+            } else {
+                const cleanName = authData.name.trim();
+                let avatarUrl = '';
+
+                if (signupImageFile) {
+                    try {
+                        avatarUrl = await uploadToCloudinary(signupImageFile);
+                    } catch(err) {
+                        console.warn('Could not upload custom image');
+                    }
+                }
+
+                const res = await auth.createUserWithEmailAndPassword(fakeEmail, authData.password);
+                await res.user.updateProfile({ displayName: cleanName, photoURL: avatarUrl });
+
+                const profileObj = {
+                    name: cleanName,
+                    phone: phone,
+                    email: authData.email.trim(),
+                    committee: authData.committee,
+                    avatar: avatarUrl,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                await db.collection('users').doc(res.user.uid).set(profileObj);
+                setUserProfile(profileObj);
+                setEditProfileData(profileObj);
+                showToast('تم إنشاء الحساب بنجاح');
+            }
+            setActiveTab('home');
+            setAuthData({ name: '', phone: '', email: '', password: '', committee: 'HR' });
+            setSignupImageFile(null);
+            setSignupImagePreview(null);
+        } catch (error) {
+            setAuthError('تأكد من صحة البيانات أو وجود الحساب.');
+        } finally {
+            setAuthLoading(false);
+        }
+    };
+
+    const handleImageSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedImageFile(file);
+            setEditProfileData(prev => ({ ...prev, avatar: URL.createObjectURL(file) }));
+        }
+    };
+
+    const handleSignupImageSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSignupImageFile(file);
+            setSignupImagePreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleUpdateProfile = async (e) => {
+        e.preventDefault();
+        if (!user) return;
+        setIsSavingProfile(true);
+        setUploadProgress(0);
+
+        try {
+            let finalAvatarUrl = editProfileData.avatar;
+            if (selectedImageFile) {
+                finalAvatarUrl = await uploadToCloudinary(selectedImageFile, setUploadProgress);
+            }
+
+            const cleanName = editProfileData.name.trim();
+            let cleanPhone = editProfileData.phone.trim();
+            if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
+
+            await user.updateProfile({ displayName: cleanName, photoURL: finalAvatarUrl });
+
+            const updatedData = {
+                name: cleanName,
+                phone: cleanPhone,
+                email: editProfileData.email.trim(),
+                committee: editProfileData.committee,
+                avatar: finalAvatarUrl,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            await db.collection('users').doc(user.uid).set(updatedData, { merge: true });
+
+            const userIdeasSnapshot = await db.collection('ideas').where('authorId', '==', user.uid).get();
+            if (!userIdeasSnapshot.empty) {
+                const batch = db.batch();
+                userIdeasSnapshot.docs.forEach(doc => {
+                    batch.update(doc.ref, { author: cleanName, avatar: finalAvatarUrl, authorCommittee: editProfileData.committee });
+                });
+                await batch.commit();
+            }
+
+            setUserProfile(prev => ({ ...prev, ...updatedData }));
+            if (viewProfileData) {
+                setViewProfileData({
+                    ...viewProfileData, name: cleanName, committee: editProfileData.committee,
+                    phone: cleanPhone, email: editProfileData.email.trim(), avatar: finalAvatarUrl
+                });
+            }
+            setIsEditingProfile(false);
+            setSelectedImageFile(null);
+            showToast('تم حفظ التعديلات بنجاح');
+        } catch (err) {
+            showToast('حدث خطأ أثناء الحفظ', 'error');
+        } finally {
+            setIsSavingProfile(false);
+            setUploadProgress(0);
+        }
+    };
+
+    const handleUpvote = async (id, e) => {
+        if (e) e.stopPropagation();
+        if (!user) { showToast('يرجى تسجيل الدخول للتفاعل', 'error'); navigateTo('auth'); return; }
+        if (pendingVotes[id]) return;
+
+        const idea = ideas.find(i => i.id === id);
+        if (!idea) return;
+        const hasUpvoted = (idea.upvoters || []).includes(user.uid);
+        setPendingVotes(p => ({ ...p, [id]: true }));
+
+        try {
+            const ideaRef = db.collection('ideas').doc(id);
+            if (hasUpvoted) {
+                await ideaRef.update({
+                    upvotes: firebase.firestore.FieldValue.increment(-1),
+                    upvoters: firebase.firestore.FieldValue.arrayRemove(user.uid)
+                });
+            } else {
+                await ideaRef.update({
+                    upvotes: firebase.firestore.FieldValue.increment(1),
+                    upvoters: firebase.firestore.FieldValue.arrayUnion(user.uid)
+                });
+            }
+        } catch (err) {
+            showToast('تعذر تسجيل الإعجاب', 'error');
+        } finally {
+            setPendingVotes(p => { const n = { ...p }; delete n[id]; return n; });
+        }
+    };
+
+    const handleSubmitIdea = async (e) => {
+        e.preventDefault();
+        if (!user) { navigateTo('auth'); return; }
+        setIsSubmittingIdea(true);
+        try {
+            const authorName = user.displayName || userProfile?.name || "عضو YLY";
+            const authorAvatar = user.photoURL || userProfile?.avatar || '';
+
+            await db.collection('ideas').add({
+                title: newIdea.title.trim(),
+                problem: newIdea.problem.trim(),
+                solution: newIdea.solution.trim(),
+                committee: newIdea.committee,
+                expectedImpact: newIdea.expectedImpact,
+                status: "submitted",
+                author: authorName,
+                authorId: user.uid,
+                avatar: authorAvatar,
+                authorCommittee: userProfile?.committee || "HR",
+                upvotes: 0,
+                upvoters: [],
+                timeAgo: new Date().toLocaleDateString('ar-EG'),
+                commentsList: [],
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            setNewIdea({ title: '', problem: '', solution: '', committee: 'HR', expectedImpact: 'High' });
+            navigateTo('home');
+            showToast('تم إرسال فكرتك للإدارة بنجاح');
+        } catch (err) {
+            showToast('تعذر إرسال الفكرة', 'error');
+        } finally {
+            setIsSubmittingIdea(false);
+        }
+    };
+
+    const handleAddComment = async (ideaId) => {
+        const commentText = newComment.trim();
+        if (!commentText || !user || isCommenting) return;
+
+        setNewComment("");
+        setIsCommenting(true);
+
+        const authorName = user.displayName || userProfile?.name || "عضو YLY";
+        const authorAvatar = user.photoURL || userProfile?.avatar || '';
+        const newCommentObj = {
+            id: Date.now().toString(),
+            author: authorName,
+            authorUid: user.uid,
+            avatar: authorAvatar,
+            committee: userProfile?.committee || "عضو",
+            text: commentText,
+            time: new Date().toLocaleDateString('ar-EG')
+        };
+
+        try {
+            await db.collection('ideas').doc(ideaId).update({
+                commentsList: firebase.firestore.FieldValue.arrayUnion(newCommentObj)
+            });
+        } catch (err) {
+            setNewComment(commentText);
+            showToast('تعذر إرسال التعليق، تحقق من الاتصال', 'error');
+        } finally {
+            setIsCommenting(false);
+        }
+    };
+
+    const openProfile = async (name, avatar, committee, uid, e) => {
+        if (e) e.stopPropagation();
+        setIsEditingProfile(false);
+
+        const initialData = {
+            name, uid, avatar: avatar || '', committee: committee || "عضو",
+            phone: '...', email: '...'
+        };
+        navigateTo('profile', { profileData: initialData });
+
+        try {
+            const userDoc = await db.collection('users').doc(uid).get();
+            if (userDoc.exists) {
+                const d = userDoc.data();
+                setViewProfileData({
+                    name: d.name || name,
+                    uid,
+                    avatar: d.avatar || avatar || '',
+                    committee: d.committee || committee || "عضو",
+                    phone: d.phone || 'غير مسجل',
+                    email: d.email || 'غير مسجل'
+                });
+            }
+        } catch(err) {
+            console.error(err);
+        }
+    };
+
+    const requireAuth = (nextTab) => {
+        if (user) navigateTo(nextTab);
+        else navigateTo('auth');
+    };
+
+    const selectedIdea = useMemo(() => ideas.find(i => i.id === selectedIdeaId), [ideas, selectedIdeaId]);
+
+    const isVisitingOtherProfile = activeTab === 'profile' && viewProfileData && (!user || viewProfileData.uid !== user?.uid);
+    const showBottomNav = ['home', 'leaderboard', 'library'].includes(activeTab) || (activeTab === 'profile' && !isVisitingOtherProfile);
+
+    const StatusPill = ({ status }) => {
+        const stage = STATUS_STAGES.find(s => s.id === status) || STATUS_STAGES[0];
+        let styles = 'bg-slate-50 text-slate-600 border-slate-200';
+        let icon = <Clock size={11} />;
+
+        if(status === 'standardized') { styles = 'bg-emerald-50 text-emerald-700 border-emerald-200'; icon = <Award size={11} />; }
+        else if(status === 'implemented') { styles = 'bg-blue-50 text-blue-700 border-blue-200'; icon = <CheckCircle2 size={11} />; }
+        else if(status === 'experiment' || status === 'measuring') { styles = 'bg-orange-50 text-orange-700 border-orange-200'; icon = <TrendingUp size={11} />; }
+        else if(status === 'approved') { styles = 'bg-amber-50 text-amber-700 border-amber-200'; icon = <CheckCircle2 size={11} />; }
+        else if(status === 'rejected') { styles = 'bg-red-50 text-red-600 border-red-200'; icon = <XCircle size={11} />; }
+
+        return (
+            <span className={`px-2 py-0.5 text-[10px] md:text-[11px] font-bold rounded-full border flex items-center gap-1 shrink-0 ${styles}`}>
+                {icon} {stage.label}
+            </span>
+        );
+    };
+
+    return (
+        <div dir="rtl" className="flex flex-col h-screen overflow-hidden relative font-sans text-slate-800">
+
+            {toast && (
+                <div className={`fixed top-16 left-1/2 -translate-x-1/2 z-[100] max-w-[88vw] sm:max-w-sm backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-lg flex items-start gap-2 animate-pop-in ${toast.type === 'error' ? 'bg-red-600/95' : 'bg-[#002060]/95'}`}>
+                    {toast.type === 'error' ? <AlertCircle className="text-red-200 shrink-0" size={16} /> : <CheckCircle2 className="text-emerald-400 shrink-0" size={16} />}
+                    <span className="text-xs md:text-sm font-bold leading-snug break-words">{toast.message}</span>
+                </div>
+            )}
+
+            {fullScreenImage && (
+                <div className="fixed inset-0 bg-black/95 z-[999] flex items-center justify-center p-4 animate-fade-in" onClick={() => setFullScreenImage(null)}>
+                    <button onClick={() => setFullScreenImage(null)} className="absolute top-5 right-5 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20">
+                        <X size={24} />
+                    </button>
+                    <img src={fullScreenImage} onClick={e => e.stopPropagation()} className="max-w-full max-h-[80vh] rounded-2xl shadow-2xl object-contain border border-white/10" alt="" />
+                </div>
+            )}
+
+            <header className="fixed top-0 left-0 right-0 bg-gradient-to-r from-[#17325D] via-[#132A52] to-[#102444] z-40 shadow-md border-b border-blue-400/20 rounded-b-[24px]">
+                <div className="h-0.5 bg-[#E30613] w-full"></div>
+                <div className="px-4 py-2 flex items-center justify-between h-[52px]">
+                    {(activeTab === 'idea-details' || activeTab === 'add-idea' || activeTab === 'auth' || isVisitingOtherProfile) ? (
+                        <button onClick={goBack} className="flex items-center gap-2 text-white font-bold text-xs bg-white/10 px-3 py-1.5 rounded-full hover:bg-white/20 transition-colors active:scale-95">
+                            <ArrowRight size={14} /> عودة
+                        </button>
+                    ) : (
+                        <div className="flex items-center gap-2.5">
+                            <div className="rounded-full w-8 h-8 flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-white/30 bg-white/10">
+                                <img src="https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_400,q_auto,f_auto/v1784657850/s60xlqx1otmwcijtjw1l.png" alt="YLY" className="w-full h-full object-cover scale-125" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-black text-white text-sm leading-none">كايزن YLY</span>
+                                <span className="text-[9px] text-blue-200 font-bold mt-0.5">وزارة الشباب والرياضة</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {user ? (
+                        <button onClick={() => openProfile(user.displayName, user.photoURL || userProfile?.avatar, userProfile?.committee, user.uid)} className="w-8 h-8 rounded-full flex items-center justify-center border border-white/30 overflow-hidden bg-white/10 active:scale-95 transition-transform">
+                            <UserAvatar src={user.photoURL || userProfile?.avatar} name={user.displayName} size="w-full h-full" textClass="text-[10px]" />
+                        </button>
+                    ) : (
+                        activeTab !== 'auth' && (
+                            <button onClick={() => navigateTo('auth')} className="text-[10px] font-bold text-white bg-ylyred px-3 py-1.5 rounded-full shadow-sm">
+                                تسجيل الدخول
+                            </button>
+                        )
+                    )}
+                </div>
+            </header>
+
+            <main ref={mainContainerRef} className={`flex-1 overflow-y-auto pt-[70px] px-3.5 hide-scroll relative z-10 
+                ${showBottomNav ? 'pb-[80px]' : activeTab === 'idea-details' ? 'pb-0' : 'pb-6'}`}>
+
+                {activeTab === 'home' && (
+                    <div className="max-w-xl mx-auto space-y-3.5 pb-10">
+
+                        <div className="bg-gradient-to-br from-[#17325D] via-[#132A52] to-[#102444] rounded-3xl p-5 text-white shadow-xl relative overflow-hidden mb-2 animate-fade-in border border-blue-400/25">
+                            <div className="absolute -left-4 -top-4 opacity-10"><Target size={120} /></div>
+                            <h2 className="text-[11px] font-medium text-blue-200">مرحباً بكم يا أبطال الكايزن،</h2>
+                            <h3 className="text-xl font-black mt-0.5 mb-4">YLY Sharkia</h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-white/10 rounded-2xl p-3 border border-white/10 backdrop-blur-sm">
+                                    <p className="text-[10px] text-blue-200 font-bold mb-1">الأفكار المطروحة</p>
+                                    <p className="text-2xl font-black text-white">{ideas.length}</p>
+                                </div>
+                                <div onClick={() => navigateTo('library')} className="bg-gradient-to-br from-emerald-500/30 to-emerald-600/50 rounded-2xl p-3 border border-emerald-400/30 backdrop-blur-sm cursor-pointer active:scale-95 transition-transform shadow-sm">
+                                    <p className="text-[10px] text-emerald-100 font-bold mb-1">أفكار تعممت بنجاح</p>
+                                    <p className="text-2xl font-black text-white">{ideas.filter(i => i.status === 'standardized').length}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative z-30 bg-gradient-to-r from-[#17325D] to-[#102444] p-2.5 rounded-2xl border border-blue-400/25 shadow-md mb-2 space-y-2">
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 bg-white border border-transparent rounded-xl px-3 py-2 flex items-center gap-2 shadow-xs">
+                                    <Search size={16} className="text-[#002060] shrink-0" />
+                                    <input
+                                        type="text"
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                        placeholder="ابحث بالاسم أو العنوان أو الفكرة..."
+                                        className="bg-transparent w-full text-xs font-bold text-[#002060] placeholder-slate-400 outline-none"
+                                    />
+                                    {searchTerm && (
+                                        <button onClick={() => setSearchTerm('')} className="text-slate-400 hover:text-[#002060]">
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+
+                                <button
+                                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                    className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all shrink-0 ${
+                                        isFilterOpen || filterStatus !== 'الكل' || filterCommittee !== 'الكل' || sortBy !== 'newest'
+                                            ? 'bg-ylyred border-ylyred text-white shadow-sm'
+                                            : 'bg-white/10 border-white/15 text-blue-200 hover:bg-white/20'
+                                    }`}
+                                    title="خيارات الفلترة"
+                                >
+                                    <Filter size={16} />
+                                </button>
+                            </div>
+
+                            {isFilterOpen && (
+                                <div className="pt-2 border-t border-white/10 space-y-2 animate-fade-in">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-[9px] font-bold text-blue-200">المرحلة</span>
+                                                {(filterStatus !== 'الكل' || filterCommittee !== 'الكل' || sortBy !== 'newest') && (
+                                                    <button 
+                                                        onClick={() => {
+                                                            setFilterStatus('الكل');
+                                                            setFilterCommittee('الكل');
+                                                            setSortBy('newest');
+                                                        }}
+                                                        className="bg-ylyred hover:bg-red-700 text-white text-[8px] font-black px-2 py-0.5 rounded-md shadow-xs active:scale-95 transition-all"
+                                                    >
+                                                        إلغاء
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <CustomSelect
+                                                value={STATUS_STAGES.find(s=>s.id===filterStatus)?.label || filterStatus}
+                                                options={[{label: 'كل المراحل', value: 'الكل'}, ...STATUS_STAGES.map(s=>({label: s.label, value: s.id}))]}
+                                                onChange={val => setFilterStatus(val)}
+                                                colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
+                                            />
+                                        </div>
+                                        <div>
+                                            <span className="text-[9px] font-bold text-blue-200 block mb-1">اللجنة المعنية</span>
+                                            <CustomSelect
+                                                value={filterCommittee}
+                                                options={['الكل', ...COMMITTEES]}
+                                                onChange={val => setFilterCommittee(val)}
+                                                colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
+                                            />
+                                        </div>
+                                        <div>
+                                            <span className="text-[9px] font-bold text-blue-200 block mb-1">الترتيب الزمني</span>
+                                            <CustomSelect
+                                                value={sortBy === 'newest' ? 'الأحدث أولاً' : 'الأقدم أولاً'}
+                                                options={[
+                                                    {label: 'الأحدث أولاً', value: 'newest'},
+                                                    {label: 'الأقدم أولاً', value: 'oldest'}
+                                                ]}
+                                                onChange={val => setSortBy(val)}
+                                                colorClass="bg-white text-navy border-transparent py-2 text-[11px]"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div> 
+
+                        {!ideasLoaded && <div className="text-center mt-10"><span className="spinner text-navy"></span></div>}
+                        {ideasLoaded && filteredAndSortedIdeas.length === 0 && (
+                            <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
+                                <p className="text-xs font-bold text-slate-400">لا توجد أفكار مطابقة لبحثك</p>
+                            </div>
+                        )}
+                        {filteredAndSortedIdeas.map(idea => {
+                            const isUpvoted = user && (idea.upvoters || []).includes(user.uid);
+                            return (
+                                <article 
+                                    key={idea.id} 
+                                    onClick={() => navigateTo('idea-details', { ideaId: idea.id })} 
+                                    className="rounded-2xl border-[1.5px] border-[#002060]/30 bg-[#FAFBFD] shadow-[0_3px_12px_rgba(0,32,96,0.06)] hover:border-[#002060]/60 cursor-pointer active:scale-[0.99] transition-all overflow-hidden"
+                                >
+                                    <div className="pt-3 px-3.5 pb-2.5">
+                                        <div className="flex justify-between items-start mb-1.5 gap-2">
+                                            <div className="flex items-center gap-2.5 hover:opacity-85 min-w-0" onClick={(e) => { e.stopPropagation(); openProfile(idea.author, idea.avatar, idea.authorCommittee, idea.authorId, e); }}>
+                                                <UserAvatar src={idea.avatar} name={idea.author} size="w-9 h-9" textClass="text-[11px]" />
+                                                <div className="min-w-0">
+                                                    <h3 className="font-black text-slate-900 text-xs truncate leading-snug">{idea.author}</h3>
+                                                    <span className="text-[9px] font-black text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-200/70 inline-block mt-0.5 truncate">
+                                                        اللجنة المعنية: {idea.committee}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1 shrink-0">
+                                                <span className="text-[9px] font-bold text-slate-500">{idea.timeAgo}</span>
+                                                <StatusPill status={idea.status} />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-baseline gap-1.5 mb-1.5 -mt-1"><span className="text-[10.5px] font-bold text-slate-400 shrink-0">عنوان الفكرة:</span><h2 className="text-sm font-black text-[#001845] leading-snug tracking-tight">{idea.title}</h2></div>
+
+                                        <div className="space-y-1.5">
+                                            <div className="bg-[#FFF5F5] rounded-xl p-2.5 border-[1.75px] border-red-200/90 shadow-[0_1px_4px_rgba(227,6,19,0.04)]">
+                                                <span className="text-[10px] font-black text-ylyred block mb-0.5">المشكلة الحالية:</span>
+                                                <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-semibold">{idea.problem}</p>
+                                            </div>
+                                            <div className="bg-[#F0F5FF] rounded-xl p-2.5 border-[1.75px] border-blue-200/90 shadow-[0_1px_4px_rgba(0,32,96,0.04)]">
+                                                <span className="text-[10px] font-black text-[#002060] block mb-0.5">الحل المقترح (كايزن):</span>
+                                                <p className="text-xs text-slate-800 line-clamp-2 leading-relaxed font-semibold">{idea.solution}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="px-3.5 py-2 bg-[#F1F5F9]/60 border-t border-slate-200/70 flex items-center justify-between">
+                                        <button onClick={(e) => handleUpvote(idea.id, e)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs transition-colors border ${isUpvoted ? 'bg-[#002060] text-white border-[#002060]' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                                            {pendingVotes[idea.id] ? <span className="spinner"></span> : <Flame size={13} className={isUpvoted ? "text-orange-400 fill-orange-400" : "text-slate-400"} />}
+                                            <span>{idea.upvotes || 0} دعم</span>
+                                        </button>
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-black text-[#002060] bg-blue-50/80 border border-blue-200/80 rounded-xl">
+                                            <MessageSquare size={13} /> <span>{idea.commentsList?.length || 0} تعليق</span>
+                                        </div>
+                                    </div>
+                                </article>
+                            );
+                        })}
+                        <div className="h-6" aria-hidden="true"></div>
+                    </div>
+                )}
+
+                {/* 2. IDEA DETAILS & COMMENTS */}
+                {activeTab === 'idea-details' && selectedIdea && (
+                    <div className="flex flex-col relative max-w-xl mx-auto min-h-[calc(100vh-70px)]">
+                        <div className="flex-1 pb-20">
+                            <article className="bg-[#FAFBFD] rounded-3xl p-5 shadow-[0_4px_16px_rgba(0,32,96,0.06)] border-[1.5px] border-[#002060]/30 mb-4 animate-fade-in">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <UserAvatar src={selectedIdea.avatar} name={selectedIdea.author} size="w-10 h-10" textClass="text-xs" className="cursor-pointer" onClick={() => selectedIdea.avatar && !selectedIdea.avatar.includes('dicebear.com') && setFullScreenImage(selectedIdea.avatar)} />
+                                        <div className="min-w-0" onClick={() => openProfile(selectedIdea.author, selectedIdea.avatar, selectedIdea.authorCommittee, selectedIdea.authorId)}>
+                                            <h3 className="font-black text-slate-900 text-sm truncate cursor-pointer leading-snug">{selectedIdea.author}</h3>
+                                            <span className="text-[10px] font-black text-ylyred bg-red-50 px-1.5 py-0.5 rounded border border-red-200/70 inline-block mt-0.5">اللجنة المعنية: {selectedIdea.committee}</span>
+                                        </div>
+                                    </div>
+                                    <StatusPill status={selectedIdea.status} />
+                                </div>
+
+                                <h2 className="text-base font-black text-[#001845] mb-4 leading-snug tracking-tight">{selectedIdea.title}</h2>
+
+                                <div className="mb-6 relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                    <h4 className="text-[9px] font-black text-slate-400 mb-2 uppercase text-center">مسار الفكرة</h4>
+                                    <div className="flex justify-between items-center relative z-10 px-1">
+                                        {['submitted', 'under_review', 'experiment', 'implemented', 'standardized'].map((step) => {
+                                            const currentIdx = STATUS_STAGES.findIndex(s => s.id === selectedIdea.status);
+                                            const stepIdx = STATUS_STAGES.findIndex(s => s.id === step);
+                                            const isCompleted = currentIdx >= stepIdx;
+                                            const isCurrent = currentIdx === stepIdx;
+                                            const isRejected = selectedIdea.status === 'rejected';
+                                            let bgColor = isCompleted ? 'bg-emerald-500' : 'bg-slate-200';
+                                            if (isRejected) bgColor = 'bg-red-500';
+                                            if (isCurrent && !isRejected) bgColor = 'bg-blue-500 ring-4 ring-blue-100';
+                                            return (
+                                                <div key={step} className="flex flex-col items-center gap-1">
+                                                    <div className={`w-3 h-3 rounded-full ${bgColor} z-10 transition-all duration-500`}></div>
+                                                    <span className={`text-[8px] font-bold ${isCurrent ? 'text-blue-600' : 'text-slate-400'} hidden sm:block`}>
+                                                        {STATUS_STAGES.find(s=>s.id===step).label}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                        <div className="absolute top-1 left-2 right-2 h-0.5 bg-slate-200 -z-10">
+                                            <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${(STATUS_STAGES.findIndex(s => s.id === selectedIdea.status) / 6) * 100}%` }}></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="bg-[#FFF5F5] p-3 rounded-2xl border-[1.75px] border-red-200/90 shadow-[0_1px_4px_rgba(227,6,19,0.04)]">
+                                        <h4 className="text-[11px] font-black text-ylyred mb-1">الوضع الحالي (المشكلة)</h4>
+                                        <p className="text-xs text-slate-800 font-semibold leading-relaxed">{selectedIdea.problem}</p>
+                                    </div>
+                                    <div className="bg-[#F0F5FF] p-3 rounded-2xl border-[1.75px] border-blue-200/90 shadow-[0_1px_4px_rgba(0,32,96,0.04)]">
+                                        <h4 className="text-[11px] font-black text-[#002060] mb-1">الحل المقترح (الكايزن)</h4>
+                                        <p className="text-xs text-slate-800 font-semibold leading-relaxed">{selectedIdea.solution}</p>
+                                    </div>
+                                    {selectedIdea.results && (
+                                        <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 text-center">
+                                            <h4 className="text-[10px] font-black text-emerald-700 mb-2">نتائج القياس الفعلية</h4>
+                                            <div className="flex justify-center gap-4 mb-2">
+                                                <div className="bg-white px-4 py-1.5 rounded-lg shadow-sm"><span className="text-[9px] text-slate-400 block font-bold">قبل</span><span className="text-sm font-black text-red-500">{selectedIdea.results.before}</span></div>
+                                                <div className="bg-white px-4 py-1.5 rounded-lg shadow-sm"><span className="text-[9px] text-slate-400 block font-bold">بعد</span><span className="text-sm font-black text-emerald-500">{selectedIdea.results.after}</span></div>
+                                            </div>
+                                            <div className="bg-emerald-600 text-white text-[10px] font-bold py-1 rounded-lg">نسبة التحسن: {selectedIdea.results.improvementPercentage}%</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button onClick={(e) => handleUpvote(selectedIdea.id, e)} className={`mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs border transition-colors ${user && (selectedIdea.upvoters||[]).includes(user.uid) ? 'bg-[#002060] text-white border-[#002060]' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                                    <Flame size={14} className={user && (selectedIdea.upvoters||[]).includes(user.uid) ? "text-orange-400 fill-orange-400" : "text-slate-400"} />
+                                    دعم الفكرة ({selectedIdea.upvotes || 0})
+                                </button>
+                            </article>
+
+                            {/* Comments Section */}
+                            <div className="mb-2">
+                                <h3 className="text-sm font-black text-navy mb-3 flex items-center gap-1.5"><MessageSquare size={15} /> النقاش ({selectedIdea.commentsList?.length || 0})</h3>
+                                <div className="space-y-2">
+                                    {(!selectedIdea.commentsList || selectedIdea.commentsList.length === 0) ? (
+                                        <p className="text-center text-slate-400 font-bold text-xs py-4">كن أول من يعلق!</p>
+                                    ) : (
+                                        selectedIdea.commentsList.map(comment => (
+                                            <div key={comment.id} className="flex gap-2 animate-fade-in">
+                                                <UserAvatar src={comment.avatar} name={comment.author} size="w-8 h-8" textClass="text-[10px]" className="mt-1 cursor-pointer" onClick={() => comment.avatar && !comment.avatar.includes('dicebear.com') && setFullScreenImage(comment.avatar)} />
+                                                <div className="flex-1 bg-[#FAFBFD] p-3 rounded-2xl border border-slate-200/80 shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="font-black text-slate-900 text-xs">{comment.author}</span>
+                                                        <span className="text-[9px] font-bold text-slate-500">{comment.time}</span>
+                                                    </div>
+                                                    <p className="text-slate-800 text-xs font-semibold leading-relaxed">{comment.text}</p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Sticky Comment Input */}
+                        <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 p-2.5 pb-safe z-30 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] rounded-t-[20px]">
+                            <div className="max-w-xl mx-auto flex items-center gap-2">
+                                <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => {if(e.key==='Enter') handleAddComment(selectedIdea.id)}} placeholder={user ? "اكتب تعليقاً..." : "سجل الدخول للتعليق"} disabled={!user} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:border-navy" />
+                                <button onClick={() => user ? handleAddComment(selectedIdea.id) : navigateTo('auth')} disabled={user && (!newComment.trim() || isCommenting)} className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${(user && newComment.trim() && !isCommenting) || !user ? 'bg-ylyred text-white' : 'bg-slate-100 text-slate-300'}`}>
+                                    {isCommenting ? <span className="spinner"></span> : <Send size={15} className="transform rotate-180" />}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+ {/* 3. ADD IDEA FORM */}
+{activeTab === 'add-idea' && (
+    <div className="animate-slide-up max-w-xl mx-auto pb-10">
+        <div className="flex items-center justify-between gap-2 mb-2.5 px-1">
+            <h2 className="font-black text-navy text-base flex items-center gap-1.5 shrink-0"><Plus size={18}/> طرح فكرة كايزن</h2>
+            <p className="text-[10px] text-slate-500 font-bold truncate">الهدف: تحسين عملية حقيقية قابلة للقياس</p>
+        </div>
+
+        <form onSubmit={handleSubmitIdea} className="bg-[#FAFBFD] rounded-3xl p-5 shadow-[0_3px_12px_rgba(0,32,96,0.06)] border-[1.5px] border-[#002060]/30 space-y-2.5">
+            <div>
+                <label className="text-[11px] font-black text-slate-700 block mb-0.5">عنوان الفكرة المبتكرة</label>
+                <input required type="text" value={newIdea.title} onChange={e=>setNewIdea({...newIdea, title: e.target.value})} className="w-full bg-white border border-slate-300/80 px-3 py-2 rounded-xl text-xs font-bold focus:border-[#002060]" placeholder="مثال: تحسين نظام الحضور.." />
+            </div>
+            <div>
+                <label className="text-[11px] font-black text-ylyred block mb-0.5">الوضع الحالي (المشكلة)</label>
+                <textarea required rows="2" value={newIdea.problem} onChange={e=>setNewIdea({...newIdea, problem: e.target.value})} className="w-full bg-red-50/40 border border-red-200 px-3 py-2 rounded-xl text-xs font-bold resize-none focus:border-red-400" placeholder="كيف تتم العملية الآن؟"></textarea>
+            </div>
+            <div>
+                <label className="text-[11px] font-black text-blue-600 block mb-0.5">الحل المقترح (الكايزن)</label>
+                <textarea required rows="2" value={newIdea.solution} onChange={e=>setNewIdea({...newIdea, solution: e.target.value})} className="w-full bg-blue-50/40 border border-blue-200 px-3 py-2 rounded-xl text-xs font-bold resize-none focus:border-blue-400" placeholder="ما هو الحل؟"></textarea>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+                <div>
+                    <label className="text-[11px] font-black text-slate-700 block mb-0.5">اللجنة المعنية بالتطبيق</label>
+                    <CustomSelect value={newIdea.committee} options={COMMITTEES} onChange={(val) => setNewIdea({...newIdea, committee: val})} colorClass="focus:border-[#002060] text-slate-800 bg-white border-slate-300/80" />
+                </div>
+                <div>
+                    <label className="text-[11px] font-black text-slate-700 block mb-0.5">التأثير المتوقع</label>
+                    <CustomSelect value={newIdea.expectedImpact} options={[{label: 'عالي (High)', value: 'High'}, {label: 'متوسط (Medium)', value: 'Medium'}, {label: 'منخفض (Low)', value: 'Low'}]} onChange={(val) => setNewIdea({...newIdea, expectedImpact: val})} colorClass="text-emerald-700 bg-emerald-50 border-emerald-300/80" />
+                </div>
+            </div>
+            <div className="pt-2 mb-10">
+                <button type="submit" disabled={isSubmittingIdea} className="w-full bg-navy hover:bg-[#001845] text-white font-black py-2.5 rounded-xl shadow-md flex justify-center items-center gap-2 transition-all active:scale-[0.99]">
+                    {isSubmittingIdea ? <span className="spinner"></span> : 'إرسال الفكرة للمراجعة'}
+                </button>
+            </div>
+        </form>
+    </div>
+)}           
+
+
+                {/* 4. LEADERBOARD */}
+                {activeTab === 'leaderboard' && (
+                    <div className="animate-fade-in max-w-xl mx-auto pb-10">
+                        <div className="rounded-3xl p-5 shadow-xl text-center text-white mb-4 border border-white/20 relative overflow-hidden bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `linear-gradient(rgba(10, 25, 47, 0.45), rgba(10, 25, 47, 0.65)), url('https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_1000,q_auto,f_auto/v1791976277/vkltjxombswnzhwbpvko.jpg')` }}>
+                            <Award size={36} className="mx-auto text-yellow-400 mb-2" />
+                            <h2 className="text-lg font-black">أبطال الكايزن</h2>
+                            <p className="text-[10px] font-bold text-blue-200 mt-1">يتم احتساب النقاط بناءً على تأثير الفكرة ومراحل تنفيذها.</p>
+                        </div>
+                        <div className="space-y-2.5">
+                            {topUsers.length === 0 && <p className="text-center text-xs font-bold text-slate-400 mt-10">لا يوجد أبطال بعد</p>}
+                            {topUsers.map((usr, idx) => (
+                                <div key={idx} onClick={() => openProfile(usr.name, usr.avatar, usr.committee, usr.uid)} className="bg-white rounded-2xl p-3 flex items-center shadow-sm border border-slate-100 cursor-pointer hover:bg-slate-50 transition-all active:scale-[0.99]">
+
+                                    <div className="relative mr-2 shrink-0">
+                                        <div className={`w-12 h-12 rounded-full p-[2.5px] ${
+                                            idx === 0 ? 'bg-gradient-to-tr from-yellow-600 via-amber-300 to-yellow-500 shadow-md ring-2 ring-yellow-400/40' :
+                                            idx === 1 ? 'bg-gradient-to-tr from-slate-500 via-slate-200 to-slate-400 shadow-sm ring-2 ring-slate-300/40' :
+                                            idx === 2 ? 'bg-gradient-to-tr from-amber-800 via-amber-400 to-amber-700 shadow-sm ring-2 ring-amber-600/40' :
+                                            'bg-gradient-to-tr from-[#001845] to-blue-400 p-[1.5px]'
+                                        }`}>
+                                            <UserAvatar src={usr.avatar} name={usr.name} size="w-full h-full" textClass="text-xs" />
+                                        </div>
+                                        <span className={`absolute -bottom-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white border-2 border-white shadow-xs ${
+                                            idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-slate-500' : idx === 2 ? 'bg-amber-700' : 'bg-[#002060]'
+                                        }`}>
+                                            {idx + 1}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex-1 min-w-0 pr-2">
+                                        <h3 className="font-bold text-slate-900 text-xs sm:text-sm truncate">{usr.name}</h3>
+                                        <p className="text-[10px] text-slate-400 font-bold mt-0.5 truncate">لجنة: {usr.committee}</p>
+                                    </div>
+                                    <div className="text-left bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 flex items-center gap-1 shrink-0">
+                                        <span className="text-sm font-black text-emerald-600">{usr.score}</span>
+                                        <span className="text-[9px] font-bold text-emerald-500">نقطة</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* 5. KNOWLEDGE LIBRARY */}
+                {activeTab === 'library' && (
+                    <div className="animate-fade-in max-w-xl mx-auto space-y-3 pb-10">
+                        <div className="rounded-3xl p-5 shadow-xl text-center text-white mb-4 border border-white/20 relative overflow-hidden bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `linear-gradient(rgba(10, 25, 47, 0.45), rgba(10, 25, 47, 0.65)), url('https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_1000,q_auto,f_auto/v1791976277/vkltjxombswnzhwbpvko.jpg')` }}>
+                            <BookOpen size={32} className="text-blue-300 mx-auto mb-2" />
+                            <h2 className="font-black text-white text-base">مكتبة الكايزن المعتمدة</h2>
+                            <p className="text-[10px] text-blue-200 font-bold mt-1">الأفكار التي أثبتت نجاحها وتم تحويلها لـ Standard.</p>
+                        </div>
+                        {ideas.filter(i => i.status === 'standardized').length === 0 && (
+                            <p className="text-center text-xs font-bold text-slate-400 mt-10">المكتبة قيد الإنشاء...</p>
+                        )}
+                        {ideas.filter(i => i.status === 'standardized').map(idea => (
+                            <div key={idea.id} onClick={() => navigateTo('idea-details', { ideaId: idea.id })} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 cursor-pointer hover:border-[#002060]">
+                                <h3 className="font-bold text-[#002060] text-sm leading-tight mb-1">{idea.title}</h3>
+                                <p className="text-[10px] text-slate-400 font-bold mb-3">اللجنة: {idea.committee}</p>
+                                <div className="flex justify-between items-center bg-blue-50/50 rounded-xl p-2 text-[10px] font-bold">
+                                    <span className="text-slate-500">التأثير المستهدف: {idea.expectedImpact}</span>
+                                    <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">عرض الـ Standard</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* 6. PROFILE VIEW & EDIT (Shows Phone & Gmail for Everyone) */}
+                {activeTab === 'profile' && viewProfileData && (
+                    <div className="max-w-md mx-auto mb-10">
+                        <div className="bg-white rounded-3xl p-5 text-center border border-slate-200/70 shadow-sm mt-8 relative animate-fade-in">
+                            {user && viewProfileData.uid === user.uid && (
+                                <div className="absolute top-4 left-4 flex gap-2 z-10">
+                                    {!isEditingProfile && (
+                                        <button onClick={() => setIsEditingProfile(true)} className="w-8 h-8 bg-blue-50 text-navy rounded-full flex items-center justify-center border border-blue-100"><Edit3 size={14}/></button>
+                                    )}
+                                    <button onClick={() => { auth.signOut(); navigateTo('home'); }} className="w-8 h-8 bg-red-50 text-red-500 rounded-full flex items-center justify-center border border-red-100"><LogOut size={14}/></button>
+                                </div>
+                            )}
+
+                            {!isEditingProfile ? (
+                                <>
+                                    <UserAvatar src={viewProfileData.avatar} name={viewProfileData.name} size="w-20 h-20" textClass="text-2xl" className="mx-auto -mt-10 mb-3 border-2 border-white shadow-md cursor-pointer" onClick={() => viewProfileData.avatar && !viewProfileData.avatar.includes('dicebear.com') && setFullScreenImage(viewProfileData.avatar)} />
+                                    <h2 className="text-base font-black text-navy mb-1">{viewProfileData.name}</h2>
+                                    <span className="inline-block px-3 py-1 bg-red-50 text-ylyred text-[10px] font-bold rounded-lg border border-red-100/70 mb-4">لجنة: {viewProfileData.committee}</span>
+
+                                    {/* Phone & Gmail displayed for all visitors */}
+                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4 text-right space-y-2">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-400 font-bold">رقم الهاتف:</span>
+                                            <span className="font-bold text-slate-700" dir="ltr">{viewProfileData.phone ? `+20 ${viewProfileData.phone}` : 'غير مسجل'}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-400 font-bold">البريد الإلكتروني:</span>
+                                            <span className="font-bold text-slate-700 truncate max-w-[180px]" dir="ltr">{viewProfileData.email || 'غير مسجل'}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
+                                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                            <span className="text-[10px] text-slate-400 font-bold block mb-1">الأفكار المطروحة</span>
+                                            <p className="text-lg font-black text-navy">{ideas.filter(i => i.authorId === viewProfileData.uid).length}</p>
+                                        </div>
+                                        <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+                                            <span className="text-[10px] text-emerald-600 font-bold block mb-1">نقاط الأبطال (التأثير)</span>
+                                            <p className="text-lg font-black text-emerald-700">{
+                                                ideas.filter(i => i.authorId === viewProfileData.uid).reduce((sum, idea) => sum + (SCORE_MAP[idea.status] || 0), 0)
+                                            }</p>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="text-right pt-2 animate-fade-in relative z-0">
+                                    <h3 className="text-sm font-black text-navy mb-4 text-center flex items-center justify-center gap-1.5"><Edit3 size={15}/> تعديل البروفايل</h3>
+
+                                    <div className="flex flex-col items-center mb-4 relative">
+                                        <div className="w-20 h-20 rounded-full border-2 border-white shadow-md bg-slate-100 overflow-hidden relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>
+                                            <img src={editProfileData.avatar} className="w-full h-full object-cover" alt="" />
+                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Camera size={24} className="text-white" />
+                                            </div>
+                                        </div>
+                                        <span className="text-[9px] font-bold text-slate-400 mt-1 cursor-pointer" onClick={() => fileInputRef.current.click()}>تغيير الصورة</span>
+                                        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
+                                    </div>
+
+                                    <form onSubmit={handleUpdateProfile} className="space-y-3">
+                                        <div><label className="text-[10px] font-black text-slate-600 block mb-1">الاسم الرباعي</label><input type="text" required value={editProfileData.name} onChange={e=>setEditProfileData({...editProfileData, name: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold focus:border-navy" /></div>
+                                        <div><label className="text-[10px] font-black text-slate-600 block mb-1">رقم الهاتف</label><input type="tel" value={editProfileData.phone} onChange={e=>setEditProfileData({...editProfileData, phone: e.target.value.replace(/\D/g,'').slice(0,10)})} className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-left focus:border-navy" dir="ltr" /></div>
+                                        <div><label className="text-[10px] font-black text-slate-600 block mb-1">البريد الإلكتروني (Gmail)</label><input type="email" value={editProfileData.email} onChange={e=>setEditProfileData({...editProfileData, email: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-left focus:border-navy" dir="ltr" placeholder="example@gmail.com" /></div>
+                                        <div><label className="text-[10px] font-black text-slate-600 block mb-1">اللجنة</label><CustomSelect value={editProfileData.committee} options={COMMITTEES} onChange={(val) => setEditProfileData({...editProfileData, committee: val})} /></div>
+                                        <div className="flex gap-2 pt-4 mb-4">
+                                            <button type="submit" disabled={isSavingProfile} className="flex-1 bg-navy text-white py-2.5 rounded-xl font-bold text-xs flex justify-center items-center">
+                                                {isSavingProfile ? (uploadProgress > 0 && uploadProgress < 100 ? `جاري الرفع ${uploadProgress}%` : <span className="spinner"></span>) : 'حفظ التعديلات'}
+                                            </button>
+                                            <button type="button" onClick={() => { setIsEditingProfile(false); setSelectedImageFile(null); }} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs">إلغاء</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* 7. AUTH (Login / Register with Gmail & Photo) */}
+                {activeTab === 'auth' && (
+
+<div className="animate-fade-in w-full max-w-[370px] mx-auto mt-5 px-3 pb-12">
+    <div className="bg-gradient-to-b from-[#17325D] to-[#102444] p-6 sm:p-7 rounded-3xl shadow-2xl border border-blue-400/25">
+                                                                {!isLoginView ? (
+                                        <div className="flex flex-col items-center mb-3">
+                                            <div onClick={() => signupFileInputRef.current.click()} className="w-16 h-16 rounded-full border-2 border-white/40 bg-white/10 flex items-center justify-center cursor-pointer overflow-hidden relative group shadow-inner">
+                                                {signupImagePreview ? (
+                                                    <img src={signupImagePreview} className="w-full h-full object-cover" alt="" />
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center text-white/80">
+                                                        <Camera size={20} />
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Camera size={18} className="text-white" />
+                                                </div>
+                                            </div>
+                                            <span onClick={() => signupFileInputRef.current.click()} className="text-[10px] font-bold text-blue-200 mt-1 cursor-pointer hover:underline">
+                                                ارفع صورتك الآن
+                                            </span>
+                                            <input type="file" accept="image/*" ref={signupFileInputRef} onChange={handleSignupImageSelect} className="hidden" />
+                                            <h2 className="text-sm font-black text-white mt-1">إنشاء حساب جديد</h2>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center mb-4">
+                                            <div className="w-10 h-10 bg-white/10 text-white rounded-full flex items-center justify-center mx-auto mb-2 border border-white/20"><User size={18} /></div>
+                                            <h2 className="text-base font-black text-white">تسجيل الدخول</h2>
+                                        </div>
+                                    )}
+
+                                    {authError && <div className="bg-red-500/20 border border-red-500/50 text-red-200 text-[10px] font-bold rounded-lg p-2 mb-3 text-center">{authError}</div>}
+
+<form onSubmit={handleAuth} className="space-y-3.5 pt-1">
+                                        {!isLoginView && (
+                                            <>
+                                                <div><input type="text" required placeholder="الاسم الرباعي" value={authData.name} onChange={e=>setAuthData({...authData, name: e.target.value})} className="w-full bg-slate-50 border border-transparent px-3 py-2.5 rounded-xl text-xs font-bold text-navy focus:border-blue-400 placeholder-slate-400" /></div>
+                                                <div><input type="email" required placeholder="البريد الإلكتروني (Gmail)" value={authData.email} onChange={e=>setAuthData({...authData, email: e.target.value})} className="w-full bg-slate-50 border border-transparent px-3 py-2.5 rounded-xl text-xs font-bold text-navy focus:border-blue-400 placeholder-slate-400 text-left" dir="ltr" /></div>
+                                                <div><CustomSelect placeholder="اختر اللجنة" value={authData.committee} options={COMMITTEES} onChange={(val) => setAuthData({...authData, committee: val})} colorClass="bg-slate-50 text-navy border-transparent focus:border-blue-400" /></div>
+                                            </>
+                                        )}
+                                        <div><input type="tel" required placeholder="رقم الهاتف (دون الصفر)" value={authData.phone} onChange={e=>setAuthData({...authData, phone: e.target.value.replace(/\D/g,'').slice(0,10)})} className="w-full bg-slate-50 border border-transparent px-3 py-2.5 rounded-xl text-xs font-bold text-navy focus:border-blue-400 text-left placeholder-slate-400" dir="ltr" /></div>
+                                        <div><input type="password" required placeholder="كلمة المرور" value={authData.password} onChange={e=>setAuthData({...authData, password: e.target.value})} className="w-full bg-slate-50 border border-transparent px-3 py-2.5 rounded-xl text-xs font-bold text-navy focus:border-blue-400 placeholder-slate-400" /></div>
+                                        <div className="pt-1">
+                                            <button type="submit" disabled={authLoading} className="w-full bg-ylyred hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow-sm flex justify-center items-center">
+                                                {authLoading ? <span className="spinner"></span> : (isLoginView ? 'دخول' : 'تسجيل حساب')}
+                                            </button>
+                                        </div>
+                                    </form>
+                                    <div className="mt-4 text-center border-t border-white/10 pt-3">
+                                        <button onClick={() => { setIsLoginView(!isLoginView); setAuthError(''); setSignupImagePreview(null); setSignupImageFile(null); }} className="text-[10px] font-bold text-blue-200 hover:text-white transition-colors">{isLoginView ? 'عضو جديد؟ اضغط هنا للتسجيل' : 'لديك حساب؟ سجل دخولك'}</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Fixed Bottom Navigation */}
+                    {showBottomNav && (
+                        <nav className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[24px] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] border-t border-slate-100 z-40 pb-safe pt-2 px-6 flex justify-between items-center h-[52px]">
+                            <button onClick={()=>navigateTo('home')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${activeTab==='home'?'text-navy':'text-slate-400'}`}>
+                                <Home size={18} /> <span className="text-[8px] font-bold">الرئيسية</span>
+                            </button>
+                            <button onClick={()=>navigateTo('leaderboard')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${activeTab==='leaderboard'?'text-navy':'text-slate-400'}`}>
+                                <Award size={18} /> <span className="text-[8px] font-bold">الأبطال</span>
+                            </button>
+
+                            <div className="relative -top-[16px]">
+                                <button onClick={()=>requireAuth('add-idea')} className="bg-ylyred text-white w-[46px] h-[46px] rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(227,6,19,0.3)] border-4 border-[#F4F7FB] active:scale-90 transition-transform">
+                                    <Plus size={22} />
+                                </button>
+                            </div>
+
+                            <button onClick={()=>navigateTo('library')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${activeTab==='library'?'text-navy':'text-slate-400'}`}>
+                                <BookOpen size={18} /> <span className="text-[8px] font-bold">المكتبة</span>
+                            </button>
+                            <button onClick={() => user ? openProfile(user.displayName, user.photoURL || userProfile?.avatar || getAvatar(user.displayName), userProfile?.committee, user.uid) : navigateTo('auth')} className={`flex flex-col items-center gap-0.5 w-10 transition-colors ${(activeTab==='profile' || activeTab==='auth')?'text-navy':'text-slate-400'}`}>
+                                <User size={18} /> <span className="text-[8px] font-bold">حسابي</span>
+                            </button>
+                        </nav>
+                    )}
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<YlyKaizenApp />);
+* { 
+    -webkit-tap-highlight-color: transparent; 
+    box-sizing: border-box; 
+}
+
+html { 
+    scroll-behavior: smooth; 
+}
+
+/*  الكود الجديد (سيلفر بلاتيني فخم ومريح جداً للعين): */
+body { 
+    background-color: #EEF2F6; 
+    font-family: system-ui, -apple-system, sans-serif; 
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+}
+
+.hide-scroll {
+    -webkit-overflow-scrolling: touch;
+}
+.hide-scroll::-webkit-scrollbar { 
+    display: none; 
+}
+
+.pb-safe { 
+    padding-bottom: max(env(safe-area-inset-bottom), 16px); 
+}
+
+.spinner {
+    width: 1rem; 
+    height: 1rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    animation: spin .6s linear infinite;
+    will-change: transform;
+}
+
+@keyframes spin { 
+    to { transform: rotate(360deg); } 
+}
+
+.dropdown-enter { 
+    animation: fadeIn 0.12s ease-out forwards; 
+}
+
+input, textarea, button { 
+    outline: none !important; 
+}
+
+input:focus-visible, textarea:focus-visible { 
+    border-color: #002060 !important; 
+}
+
+/* =========================================
+   Loading Overlay (شاشة تحميل سريعة وخفيفة على الـ GPU)
+========================================= */
+#loadingOverlay {
+    position: fixed;
+    inset: 0;
+    background: #001845;
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-family: system-ui, -apple-system, sans-serif;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    will-change: opacity, visibility;
+}
+
+.spinner-box {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.spinner-box img {
+    width: 52px !important;
+    height: 52px !important;
+    object-fit: contain !important;
+    position: relative;
+    z-index: 10;
+}
+
+.modern-spinner {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 3.5px solid rgba(255, 255, 255, 0.1);
+    border-left-color: #E30613;
+    border-radius: 50%;
+    animation: spinOverlay 0.8s linear infinite;
+    will-change: transform;
+}
+
+.loading-title {
+    font-size: 1.35rem !important;
+    font-weight: 900 !important;
+    color: #ffffff !important;
+    margin-bottom: 0.25rem !important;
+    text-align: center !important;
+}
+
+.loading-title span {
+    color: #E30613 !important;
+}
+
+.loading-subtitle {
+    font-size: 11px !important;
+    color: #93c5fd !important;
+    text-align: center !important;
+}
+
+@keyframes spinOverlay {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
