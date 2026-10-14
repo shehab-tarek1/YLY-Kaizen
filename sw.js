@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kaizen-yly-v2';
+const CACHE_NAME = 'kaizen-yly-v1.1';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
