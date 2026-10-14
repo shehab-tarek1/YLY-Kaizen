@@ -731,7 +731,7 @@ useEffect(() => {
             )}
 
             {/* Top Header */}
-            <header className="fixed top-0 left-0 right-0 bg-[#001845]/95 backdrop-blur-md z-40 shadow-sm border-b border-white/10 rounded-b-[24px]">
+            <header className="fixed top-0 left-0 right-0 bg-gradient-to-r from-[#17325D] via-[#132A52] to-[#102444] z-40 shadow-md border-b border-blue-400/20 rounded-b-[24px]">
                 <div className="h-0.5 bg-[#E30613] w-full"></div>
                 <div className="px-4 py-2 flex items-center justify-between h-[52px]">
                     {(activeTab === 'idea-details' || activeTab === 'add-idea' || activeTab === 'auth' || isVisitingOtherProfile) ? (
@@ -773,7 +773,7 @@ useEffect(() => {
                     <div className="max-w-xl mx-auto space-y-3.5 pb-10">
 
                         {/* Welcome Card */}
-                        <div className="bg-[#001845] rounded-3xl p-5 text-white shadow-lg relative overflow-hidden mb-2 animate-fade-in border border-blue-900/50">
+                        <div className="bg-gradient-to-br from-[#17325D] via-[#132A52] to-[#102444] rounded-3xl p-5 text-white shadow-xl relative overflow-hidden mb-2 animate-fade-in border border-blue-400/25">
                             <div className="absolute -left-4 -top-4 opacity-10"><Target size={120} /></div>
                             <h2 className="text-[11px] font-medium text-blue-200">مرحباً بكم يا أبطال الكايزن،</h2>
                             <h3 className="text-xl font-black mt-0.5 mb-4">YLY Sharkia</h3>
@@ -790,7 +790,7 @@ useEffect(() => {
                         </div>
 
                         {/* Search & Filter Bar */}
-                        <div className="relative z-30 bg-[#001845] p-2.5 rounded-2xl border border-blue-900/50 shadow-md mb-2 space-y-2">
+                        <div className="relative z-30 bg-gradient-to-r from-[#17325D] to-[#102444] p-2.5 rounded-2xl border border-blue-400/25 shadow-md mb-2 space-y-2">
                             <div className="flex items-center gap-2">
                                 <div className="flex-1 bg-white border border-transparent rounded-xl px-3 py-2 flex items-center gap-2 shadow-xs">
                                     <Search size={16} className="text-[#002060] shrink-0" />
@@ -1085,7 +1085,7 @@ useEffect(() => {
                 {/* 4. LEADERBOARD */}
                 {activeTab === 'leaderboard' && (
                     <div className="animate-fade-in max-w-xl mx-auto pb-10">
-                        <div className="bg-[#001845] rounded-3xl p-5 shadow-lg text-center text-white mb-4 border border-blue-900/50">
+                        <div className="bg-gradient-to-br from-[#17325D] via-[#132A52] to-[#102444] rounded-3xl p-5 shadow-xl text-center text-white mb-4 border border-blue-400/25">
                             <Award size={36} className="mx-auto text-yellow-400 mb-2" />
                             <h2 className="text-lg font-black">أبطال الكايزن</h2>
                             <p className="text-[10px] font-bold text-blue-200 mt-1">يتم احتساب النقاط بناءً على تأثير الفكرة ومراحل تنفيذها.</p>
@@ -1128,7 +1128,7 @@ useEffect(() => {
                 {/* 5. KNOWLEDGE LIBRARY */}
                 {activeTab === 'library' && (
                     <div className="animate-fade-in max-w-xl mx-auto space-y-3 pb-10">
-                        <div className="bg-[#001845] border border-blue-900/50 p-5 rounded-3xl mb-4 text-center text-white shadow-lg">
+                        <div className="bg-gradient-to-br from-[#17325D] via-[#132A52] to-[#102444] border border-blue-400/25 p-5 rounded-3xl mb-4 text-center text-white shadow-xl">
                             <BookOpen size={32} className="text-blue-300 mx-auto mb-2" />
                             <h2 className="font-black text-white text-base">مكتبة الكايزن المعتمدة</h2>
                             <p className="text-[10px] text-blue-200 font-bold mt-1">الأفكار التي أثبتت نجاحها وتم تحويلها لـ Standard.</p>
