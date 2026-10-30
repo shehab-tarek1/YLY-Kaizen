@@ -37,9 +37,6 @@ if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-//  السطر الجديد (كاش محلي سريع ومباشر دون تأخير):
-db.enablePersistence().catch(() => {});
-
 const getInitials = (name) => {
     if (!name || typeof name !== 'string') return 'YL';
     const clean = name.trim();
@@ -210,32 +207,35 @@ function YlyKaizenApp() {
         setActiveTab(tab);
     }, [activeTab]);
 
-    // دالة الرجوع الذكية: ترجع لنفس الصفحة وموضع التمرير السابق بدقة
     const goBack = useCallback(() => {
         if (fullScreenImage) {
             setFullScreenImage(null);
             return;
         }
 
-        if (historyStack.length > 1) {
+        // تصفية أي صفحات auth من السجل حتى لا يعود إليها المستخدم بعد تسجيل الدخول
+        const cleanStack = historyStack.filter(item => item.tab !== 'auth');
+
+        if (cleanStack.length > 1) {
             if (mainContainerRef.current) {
                 tabScrollPositions.current[activeTab] = mainContainerRef.current.scrollTop;
             }
 
-            const newStack = [...historyStack];
+            const newStack = [...cleanStack];
             newStack.pop();
-            const prev = newStack[newStack.length - 1];
+            const prev = newStack[newStack.length - 1] || { tab: 'home' };
 
             setHistoryStack(newStack);
             if (prev.ideaId !== undefined) setSelectedIdeaId(prev.ideaId);
             if (prev.profileData !== undefined) setViewProfileData(prev.profileData);
-            setActiveTab(prev.tab);
+            setActiveTab(prev.tab || 'home');
         } else {
+            setHistoryStack([{ tab: 'home', ideaId: null, profileData: null }]);
             if (activeTab !== 'home') {
-                navigateTo('home');
+                setActiveTab('home');
             }
         }
-    }, [fullScreenImage, historyStack, activeTab, navigateTo]);
+    }, [fullScreenImage, historyStack, activeTab]);
 
     // Search & Filter State
     const [searchTerm, setSearchTerm] = useState("");
@@ -357,8 +357,7 @@ useEffect(() => {
 
     useEffect(() => {
         const unsubscribe = db.collection('ideas')
-            .orderBy('createdAt', 'desc')
-            .limit(35)
+            .limit(50)
             .onSnapshot(
                 snapshot => {
                     const fetchedIdeas = snapshot.docs.map(doc => ({
@@ -366,10 +365,19 @@ useEffect(() => {
                         ...doc.data(),
                         upvoters: doc.data().upvoters || []
                     }));
+                    // ترتيب الأفكار هنا يضمن ظهورها حتى لو حُذفت بيانات المتصفح أو تأخر توثيق وقت الإضافة
+                    fetchedIdeas.sort((a, b) => {
+                        const timeA = a.createdAt?.seconds || 0;
+                        const timeB = b.createdAt?.seconds || 0;
+                        return timeB - timeA;
+                    });
                     setIdeas(fetchedIdeas);
                     setIdeasLoaded(true);
                 },
-                err => { console.error(err); setIdeasLoaded(true); }
+                err => { 
+                    console.error("خطأ في جلب الأفكار:", err); 
+                    setIdeasLoaded(true); 
+                }
             );
         return () => unsubscribe();
     }, []);
@@ -471,6 +479,8 @@ useEffect(() => {
                 setEditProfileData(profileObj);
                 showToast('تم إنشاء الحساب بنجاح');
             }
+            // تصفير سجل التنقل تماماً لمنع زر الرجوع من فتح صفحة الدخول مجدداً
+            setHistoryStack([{ tab: 'home', ideaId: null, profileData: null }]);
             setActiveTab('home');
             setAuthData({ name: '', phone: '', email: '', password: '', committee: 'HR' });
             setSignupImageFile(null);
@@ -1162,7 +1172,15 @@ useEffect(() => {
                                     {!isEditingProfile && (
                                         <button onClick={() => setIsEditingProfile(true)} className="w-8 h-8 bg-blue-50 text-navy rounded-full flex items-center justify-center border border-blue-100"><Edit3 size={14}/></button>
                                     )}
-                                    <button onClick={() => { auth.signOut(); navigateTo('home'); }} className="w-8 h-8 bg-red-50 text-red-500 rounded-full flex items-center justify-center border border-red-100"><LogOut size={14}/></button>
+                                    <button onClick={async () => { 
+    await auth.signOut(); 
+    setUser(null);
+    setUserProfile(null);
+    setViewProfileData(null);
+    setHistoryStack([{ tab: 'home', ideaId: null, profileData: null }]);
+    setActiveTab('home');
+    showToast('تم تسجيل الخروج بنجاح');
+}} className="w-8 h-8 bg-red-50 text-red-500 rounded-full flex items-center justify-center border border-red-100"><LogOut size={14}/></button>
                                 </div>
                             )}
 
@@ -1319,3 +1337,4 @@ useEffect(() => {
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<YlyKaizenApp />);
+
