@@ -382,12 +382,13 @@ useEffect(() => {
         return () => unsubscribe();
     }, []);
 
-  // Filtered & Sorted Ideas
+  // تصفية الأفكار: تضمن ظهور كل الأفكار فوراً للزائر دون أي حجب
     const filteredAndSortedIdeas = useMemo(() => {
-        let result = Array.isArray(ideas) ? [...ideas] : [];
+        if (!ideas || !Array.isArray(ideas)) return [];
+        let result = [...ideas];
 
-        // 1. فلتر البحث
-        if (debouncedSearch && debouncedSearch.trim()) {
+        // لا يتم الفلترة إلا إذا كتب الزائر بحثاً حقيقياً
+        if (debouncedSearch && debouncedSearch.trim() !== "") {
             const q = debouncedSearch.toLowerCase().trim();
             result = result.filter(i => 
                 (i.title && String(i.title).toLowerCase().includes(q)) ||
@@ -397,17 +398,17 @@ useEffect(() => {
             );
         }
 
-        // 2. فلتر الحالة (مرن مع الحروف الكبيرة والصغيرة واللغة)
-        if (filterStatus && filterStatus !== 'الكل') {
+        // فلتر المرحلة فقط إذا تم تغييره عن القيمة الافتراضية
+        if (filterStatus && filterStatus !== 'الكل' && filterStatus !== 'كل المراحل') {
             result = result.filter(i => String(i.status || '').toLowerCase() === filterStatus.toLowerCase());
         }
 
-        // 3. فلتر اللجنة
+        // فلتر اللجنة فقط إذا اختار لجنة محددة
         if (filterCommittee && filterCommittee !== 'الكل') {
             result = result.filter(i => i.committee === filterCommittee);
         }
 
-        // 4. الترتيب
+        // الترتيب
         if (sortBy === 'oldest') {
             result.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
         } else {
@@ -1095,7 +1096,7 @@ useEffect(() => {
 
                 {/* 4. LEADERBOARD */}
                 {activeTab === 'leaderboard' && (
-                    <div className="animate-fade-in max-w-xl mx-auto pb-10">
+                    <div className="max-w-xl mx-auto pb-10">
                         <div className="rounded-3xl p-5 shadow-xl text-center text-white mb-4 border border-white/20 relative overflow-hidden bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `linear-gradient(rgba(10, 25, 47, 0.45), rgba(10, 25, 47, 0.65)), url('https://res.cloudinary.com/dsxrjmcxs/image/upload/c_limit,w_1000,q_auto,f_auto/v1791976277/vkltjxombswnzhwbpvko.jpg')` }}>
                             <Award size={36} className="mx-auto text-yellow-400 mb-2" />
                             <h2 className="text-lg font-black">أبطال الكايزن</h2>
@@ -1104,7 +1105,7 @@ useEffect(() => {
                         <div className="space-y-2.5">
                             {topUsers.length === 0 && <p className="text-center text-xs font-bold text-slate-400 mt-10">لا يوجد أبطال بعد</p>}
                             {topUsers.map((usr, idx) => (
-                                <div key={idx} onClick={() => openProfile(usr.name, usr.avatar, usr.committee, usr.uid)} className="bg-white rounded-2xl p-3 flex items-center shadow-sm border border-slate-100 cursor-pointer hover:bg-slate-50 transition-all active:scale-[0.99]">
+                                <div key={idx} onClick={() => openProfile(usr.name, usr.avatar, usr.committee, usr.uid)} className="bg-white rounded-2xl p-3 flex items-center shadow-sm border border-slate-100 cursor-pointer hover:bg-slate-50">
 
                                     <div className="relative mr-2 shrink-0">
                                         <div className={`w-12 h-12 rounded-full p-[2.5px] ${
@@ -1334,3 +1335,4 @@ useEffect(() => {
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<YlyKaizenApp />);
+
