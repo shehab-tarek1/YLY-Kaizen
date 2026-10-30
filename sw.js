@@ -1,4 +1,4 @@
-const VERSION = 'v2.2.0';
+const VERSION = 'v3.3.0';
 const PREFIX = 'kaizen-yly-';
 const STATIC_CACHE = `${PREFIX}static-${VERSION}`;
 const RUNTIME_CACHE = `${PREFIX}runtime-${VERSION}`;
