@@ -357,20 +357,20 @@ useEffect(() => {
 
     useEffect(() => {
         const unsubscribe = db.collection('ideas')
-            .limit(50)
             .onSnapshot(
                 snapshot => {
-                    const fetchedIdeas = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data(),
-                        upvoters: doc.data().upvoters || []
-                    }));
-                    // ترتيب الأفكار هنا يضمن ظهورها حتى لو حُذفت بيانات المتصفح أو تأخر توثيق وقت الإضافة
-                    fetchedIdeas.sort((a, b) => {
-                        const timeA = a.createdAt?.seconds || 0;
-                        const timeB = b.createdAt?.seconds || 0;
-                        return timeB - timeA;
+                    const fetchedIdeas = (snapshot ? snapshot.docs : []).map(doc => {
+                        const d = doc.data() || {};
+                        return {
+                            id: doc.id,
+                            ...d,
+                            status: d.status || 'submitted',
+                            upvotes: d.upvotes || 0,
+                            upvoters: d.upvoters || [],
+                            commentsList: d.commentsList || []
+                        };
                     });
+                    fetchedIdeas.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
                     setIdeas(fetchedIdeas);
                     setIdeasLoaded(true);
                 },
@@ -382,32 +382,32 @@ useEffect(() => {
         return () => unsubscribe();
     }, []);
 
-    // Filtered & Sorted Ideas
+  // Filtered & Sorted Ideas
     const filteredAndSortedIdeas = useMemo(() => {
-        let result = [...ideas];
+        let result = Array.isArray(ideas) ? [...ideas] : [];
 
-        // 1. Search Query Filter
-        if (debouncedSearch.trim()) {
+        // 1. فلتر البحث
+        if (debouncedSearch && debouncedSearch.trim()) {
             const q = debouncedSearch.toLowerCase().trim();
             result = result.filter(i => 
-                (i.title && i.title.toLowerCase().includes(q)) ||
-                (i.author && i.author.toLowerCase().includes(q)) ||
-                (i.problem && i.problem.toLowerCase().includes(q)) ||
-                (i.solution && i.solution.toLowerCase().includes(q))
+                (i.title && String(i.title).toLowerCase().includes(q)) ||
+                (i.author && String(i.author).toLowerCase().includes(q)) ||
+                (i.problem && String(i.problem).toLowerCase().includes(q)) ||
+                (i.solution && String(i.solution).toLowerCase().includes(q))
             );
         }
 
-        // 2. Status Filter
-        if (filterStatus !== 'الكل') {
-            result = result.filter(i => i.status === filterStatus);
+        // 2. فلتر الحالة (مرن مع الحروف الكبيرة والصغيرة واللغة)
+        if (filterStatus && filterStatus !== 'الكل') {
+            result = result.filter(i => String(i.status || '').toLowerCase() === filterStatus.toLowerCase());
         }
 
-        // 3. Committee Filter
-        if (filterCommittee !== 'الكل') {
+        // 3. فلتر اللجنة
+        if (filterCommittee && filterCommittee !== 'الكل') {
             result = result.filter(i => i.committee === filterCommittee);
         }
 
-        // 4. Sorting
+        // 4. الترتيب
         if (sortBy === 'oldest') {
             result.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
         } else {
@@ -1337,4 +1337,3 @@ useEffect(() => {
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<YlyKaizenApp />);
-
