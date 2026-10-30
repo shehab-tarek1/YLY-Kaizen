@@ -301,17 +301,7 @@ useEffect(() => {
     }
 }, []);
 
-// استعادة موضع التمرير بدقة لكل صفحة ومنع توريث الهبوط
-useEffect(() => {
-    if (mainContainerRef.current) {
-        const savedScroll = tabScrollPositions.current[activeTab] || 0;
-        requestAnimationFrame(() => {
-            if (mainContainerRef.current) {
-                mainContainerRef.current.scrollTop = savedScroll;
-            }
-        });
-    }
-}, [activeTab, selectedIdeaId]);
+ 
 
 // دعم زر الرجوع الخاص بالهاتف أو المتصفح بسلاسة
 useEffect(() => {
@@ -775,7 +765,7 @@ useEffect(() => {
             </header>
 
             {/* Main Content Area */}
-            <main ref={mainContainerRef} style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }} className={`flex-1 overflow-y-auto pt-[70px] px-3.5 hide-scroll relative z-10 
+            <main ref={mainContainerRef} className={`flex-1 overflow-y-auto pt-[70px] px-3.5 hide-scroll relative z-10 
                 ${showBottomNav ? 'pb-[85px]' : activeTab === 'idea-details' ? 'pb-32' : 'pb-6'}`}>
                 {/* 1. KAIZEN BOARD */}
                 {activeTab === 'home' && (
