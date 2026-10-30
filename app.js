@@ -183,10 +183,11 @@ function YlyKaizenApp() {
     const tabScrollPositions = useRef({});
     const [historyStack, setHistoryStack] = useState([{ tab: 'home', ideaId: null, profileData: null }]);
 
-    // دالة الانتقال الذكية مع حفظ موضع التمرير للصفحة السابقة
+    // دالة الانتقال الذكية: تمنع توريث النزول للصفحات الأخرى
     const navigateTo = useCallback((tab, extra = {}) => {
-        if (mainContainerRef.current) {
-            tabScrollPositions.current[activeTab] = mainContainerRef.current.scrollTop;
+        // حفظ مكانك في الصفحة الرئيسية فقط إذا كنت واقفاً فيها
+        if (mainContainerRef.current && activeTab === 'home') {
+            tabScrollPositions.current['home'] = mainContainerRef.current.scrollTop;
         }
 
         if (extra.ideaId !== undefined) setSelectedIdeaId(extra.ideaId);
@@ -213,14 +214,9 @@ function YlyKaizenApp() {
             return;
         }
 
-        // تصفية أي صفحات auth من السجل حتى لا يعود إليها المستخدم بعد تسجيل الدخول
         const cleanStack = historyStack.filter(item => item.tab !== 'auth');
 
         if (cleanStack.length > 1) {
-            if (mainContainerRef.current) {
-                tabScrollPositions.current[activeTab] = mainContainerRef.current.scrollTop;
-            }
-
             const newStack = [...cleanStack];
             newStack.pop();
             const prev = newStack[newStack.length - 1] || { tab: 'home' };
@@ -236,6 +232,20 @@ function YlyKaizenApp() {
             }
         }
     }, [fullScreenImage, historyStack, activeTab]);
+
+    // يمنع أي اهتزاز أو نزول بالعين، ويرجعك لمكانك السابق بصمت تام
+    useEffect(() => {
+        if (mainContainerRef.current) {
+            if (activeTab === 'home') {
+                // استعادة مكانك السابق في الرئيسية فوراً
+                const savedPos = tabScrollPositions.current['home'] || 0;
+                mainContainerRef.current.scrollTop = savedPos;
+            } else {
+                // فتح أي صفحة جديدة من البداية فوق
+                mainContainerRef.current.scrollTop = 0;
+            }
+        }
+    }, [activeTab]);
 
     // Search & Filter State
     const [searchTerm, setSearchTerm] = useState("");
