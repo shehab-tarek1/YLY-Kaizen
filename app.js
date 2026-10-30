@@ -776,8 +776,7 @@ useEffect(() => {
 
             {/* Main Content Area */}
             <main ref={mainContainerRef} style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }} className={`flex-1 overflow-y-auto pt-[70px] px-3.5 hide-scroll relative z-10 
-                ${showBottomNav ? 'pb-[85px]' : activeTab === 'idea-details' ? 'pb-24' : 'pb-6'}`}>
-
+                ${showBottomNav ? 'pb-[85px]' : activeTab === 'idea-details' ? 'pb-32' : 'pb-6'}`}>
                 {/* 1. KAIZEN BOARD */}
                 {activeTab === 'home' && (
                     <div className="max-w-xl mx-auto space-y-3.5 pb-10">
@@ -949,8 +948,7 @@ useEffect(() => {
                 {/* 2. IDEA DETAILS & COMMENTS */}
                 {activeTab === 'idea-details' && selectedIdea && (
                     <div className="max-w-xl mx-auto w-full">
-                        <div className="w-full">
-                            <article className="bg-[#FAFBFD] rounded-3xl p-5 shadow-[0_4px_16px_rgba(0,32,96,0.06)] border-[1.5px] border-[#002060]/30 mb-4 animate-fade-in">
+                        <article className="bg-[#FAFBFD] rounded-3xl p-5 shadow-[0_4px_16px_rgba(0,32,96,0.06)] border-[1.5px] border-[#002060]/30 mb-4 animate-fade-in">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-2.5 min-w-0">
                                         <UserAvatar src={selectedIdea.avatar} name={selectedIdea.author} size="w-10 h-10" textClass="text-xs" className="cursor-pointer" onClick={() => selectedIdea.avatar && !selectedIdea.avatar.includes('dicebear.com') && setFullScreenImage(selectedIdea.avatar)} />
@@ -1041,7 +1039,6 @@ useEffect(() => {
                                     )}
                                 </div>
                             </div>
-                        </div>
 
                         {/* Sticky Comment Input */}
                         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2.5 z-40 shadow-[0_-4px_15px_rgba(0,0,0,0.06)] rounded-t-[20px]">
@@ -1337,4 +1334,3 @@ useEffect(() => {
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<YlyKaizenApp />);
-
