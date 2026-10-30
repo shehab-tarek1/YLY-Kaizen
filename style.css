@@ -7,7 +7,7 @@ html {
     scroll-behavior: smooth; 
 }
 
-/*  الكود الجديد (سيلفر بلاتيني فخم ومريح جداً للعين): */
+/* الكود الجديد (سيلفر بلاتيني فخم ومريح جداً للعين): */
 body { 
     background-color: #EEF2F6; 
     font-family: system-ui, -apple-system, sans-serif; 
@@ -15,11 +15,14 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* تم إزالة -webkit-overflow-scrolling لمنع تعارض السكرول المزدوج مع React */
 .hide-scroll {
-    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* لمتصفحات فايرفوكس */
+    -ms-overflow-style: none; /* لمتصفح إيدج القديم */
 }
+
 .hide-scroll::-webkit-scrollbar { 
-    display: none; 
+    display: none; /* لمتصفحات كروم وسفاري */
 }
 
 .pb-safe { 
