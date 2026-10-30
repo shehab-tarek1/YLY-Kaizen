@@ -775,8 +775,8 @@ useEffect(() => {
             </header>
 
             {/* Main Content Area */}
-            <main ref={mainContainerRef} className={`flex-1 overflow-y-auto pt-[70px] px-3.5 hide-scroll relative z-10 
-                ${showBottomNav ? 'pb-[80px]' : activeTab === 'idea-details' ? 'pb-0' : 'pb-6'}`}>
+            <main ref={mainContainerRef} style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }} className={`flex-1 overflow-y-auto pt-[70px] px-3.5 hide-scroll relative z-10 
+                ${showBottomNav ? 'pb-[85px]' : activeTab === 'idea-details' ? 'pb-24' : 'pb-6'}`}>
 
                 {/* 1. KAIZEN BOARD */}
                 {activeTab === 'home' && (
@@ -948,8 +948,8 @@ useEffect(() => {
 
                 {/* 2. IDEA DETAILS & COMMENTS */}
                 {activeTab === 'idea-details' && selectedIdea && (
-                    <div className="flex flex-col relative max-w-xl mx-auto min-h-[calc(100vh-70px)]">
-                        <div className="flex-1 pb-20">
+                    <div className="max-w-xl mx-auto w-full">
+                        <div className="w-full">
                             <article className="bg-[#FAFBFD] rounded-3xl p-5 shadow-[0_4px_16px_rgba(0,32,96,0.06)] border-[1.5px] border-[#002060]/30 mb-4 animate-fade-in">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-2.5 min-w-0">
@@ -1044,7 +1044,7 @@ useEffect(() => {
                         </div>
 
                         {/* Sticky Comment Input */}
-                        <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 p-2.5 pb-safe z-30 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] rounded-t-[20px]">
+                        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2.5 z-40 shadow-[0_-4px_15px_rgba(0,0,0,0.06)] rounded-t-[20px]">
                             <div className="max-w-xl mx-auto flex items-center gap-2">
                                 <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => {if(e.key==='Enter') handleAddComment(selectedIdea.id)}} placeholder={user ? "اكتب تعليقاً..." : "سجل الدخول للتعليق"} disabled={!user} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:border-navy" />
                                 <button onClick={() => user ? handleAddComment(selectedIdea.id) : navigateTo('auth')} disabled={user && (!newComment.trim() || isCommenting)} className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${(user && newComment.trim() && !isCommenting) || !user ? 'bg-ylyred text-white' : 'bg-slate-100 text-slate-300'}`}>
@@ -1337,3 +1337,4 @@ useEffect(() => {
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<YlyKaizenApp />);
+
