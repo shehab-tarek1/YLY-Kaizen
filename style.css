@@ -3,10 +3,6 @@
     box-sizing: border-box; 
 }
 
-html { 
-    scroll-behavior: smooth; 
-}
-
 /* الكود الجديد (سيلفر بلاتيني فخم ومريح جداً للعين): */
 body { 
     background-color: #EEF2F6; 
