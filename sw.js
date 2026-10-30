@@ -1,4 +1,4 @@
-const VERSION = 'v3.4.0'; // تم التحديث لفرض مسح الكاش القديم
+const VERSION = 'v3.5.0'; // تم التحديث لفرض مسح الكاش القديم
 const PREFIX = 'kaizen-yly-';
 const STATIC_CACHE = `${PREFIX}static-${VERSION}`;
 const RUNTIME_CACHE = `${PREFIX}runtime-${VERSION}`;
