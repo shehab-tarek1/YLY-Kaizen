@@ -1,9 +1,10 @@
-const VERSION = 'v3.6.0'; // تم التحديث لفرض مسح الكاش القديم
+const VERSION = 'v3.7.0';
 const PREFIX = 'kaizen-yly-';
 const STATIC_CACHE = `${PREFIX}static-${VERSION}`;
 const RUNTIME_CACHE = `${PREFIX}runtime-${VERSION}`;
 const MAX_RUNTIME_ENTRIES = 60;
-const NAV_TIMEOUT_MS = 2500;
+const NAV_TIMEOUT_MS = 2500;     // مهلة الصفحة قبل الرجوع للكاش
+const ASSET_TIMEOUT_MS = 3000;   // مهلة ملفات المشروع قبل الرجوع للكاش
 
 const CORE_ASSETS = [
   './',
@@ -12,25 +13,30 @@ const CORE_ASSETS = [
   './app.js',
 ];
 
+// لازم تتطابق حرفياً مع الروابط المستخدمة في index.html
 const CDN_ASSETS = [
   'https://unpkg.com/react@18/umd/react.production.min.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
+  'https://unpkg.com/@babel/standalone/babel.min.js',
   'https://cdn.tailwindcss.com',
+  'https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js',
+  'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js',
 ];
 
-// ---------- Install: precache ----------
+// ---------- Install ----------
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // تفعيل فوري دون انتظار إغلاق التبويبات
+  self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(STATIC_CACHE);
-    await cache.addAll(CORE_ASSETS);
+    await Promise.allSettled(CORE_ASSETS.map((url) => cache.add(url)));
     await Promise.allSettled(
       CDN_ASSETS.map((url) => cache.add(new Request(url, { mode: 'cors' })))
     );
   })());
 });
 
-// ---------- Activate: مسح أي كاش قديم نهائياً ----------
+// ---------- Activate: مسح الكاش القديم ----------
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     if (self.registration.navigationPreload) {
@@ -59,59 +65,68 @@ function timeout(ms) {
   return new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
 }
 
-// استراتيجية Network-First للملفات الأساسية لضمان رؤية التحديثات فوراً
-async function networkFirst(request, cacheName) {
-  try {
-    const networkResponse = await fetch(request);
-    if (networkResponse && networkResponse.ok) {
+// شبكة أولاً (لتظهر التحديثات) مع مهلة، وبعدها الكاش لو الشبكة بطيئة أو مقطوعة
+async function networkFirst(event, cacheName) {
+  const request = event.request;
+  const cached = await caches.match(request);
+
+  const networkPromise = fetch(request).then(async (res) => {
+    if (res && res.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      await cache.put(request, res.clone());
+      trimCache(cacheName, MAX_RUNTIME_ENTRIES);
     }
-    return networkResponse;
-  } catch (error) {
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) return cachedResponse;
-    throw error;
+    return res;
+  });
+  networkPromise.catch(() => {}); // منع أخطاء غير معالجة لو خسرت السباق
+  event.waitUntil(networkPromise.catch(() => {}));
+
+  if (!cached) return networkPromise;
+
+  try {
+    return await Promise.race([networkPromise, timeout(ASSET_TIMEOUT_MS)]);
+  } catch {
+    return cached;
   }
 }
 
-// Navigations: شبكة أولاً ثم كاش
+// الصفحات: شبكة أولاً ثم كاش
 async function handleNavigation(event) {
   const cache = await caches.open(STATIC_CACHE);
   try {
     const preload = event.preloadResponse ? await event.preloadResponse : null;
     const res = preload || (await Promise.race([fetch(event.request), timeout(NAV_TIMEOUT_MS)]));
-    if (res && res.ok) cache.put(event.request, res.clone());
+    if (res && res.ok) cache.put('./index.html', res.clone());
     return res;
   } catch {
     return (
-      (await cache.match(event.request)) ||
       (await cache.match('./index.html')) ||
       (await cache.match('./')) ||
+      (await cache.match(event.request)) ||
       Response.error()
     );
   }
 }
 
-// ---------- Fetch routing ----------
+// ---------- Fetch ----------
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
+  if (!url.protocol.startsWith('http')) return;
+  if (request.headers.has('range')) return;
 
-  // استبعاد قواعد بيانات Firebase وكلاوديناري من الكاش تماماً لعدم تجميد البيانات
+  // بيانات Firebase / Google / Cloudinary بلا كاش نهائياً
   if (
-    url.hostname.includes('firestore.googleapis.com') ||
-    url.hostname.includes('firebaseio.com') ||
-    url.hostname.includes('cloudinary.com') ||
+    url.hostname.endsWith('googleapis.com') ||
+    url.hostname.endsWith('firebaseio.com') ||
+    url.hostname.endsWith('firebaseapp.com') ||
+    url.hostname.endsWith('cloudinary.com') ||
     url.hostname.includes('identitytoolkit')
   ) {
     return;
   }
-
-  if (!url.protocol.startsWith('http')) return;
-  if (request.headers.has('range')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(handleNavigation(event));
@@ -119,15 +134,14 @@ self.addEventListener('fetch', (event) => {
   }
 
   const isSameOrigin = url.origin === self.location.origin;
-  const isKnownCDN = CDN_ASSETS.some((a) => a === request.url);
+  const isKnownCDN = CDN_ASSETS.includes(request.url);
 
   if (isSameOrigin) {
-    // ملفات المشروع (app.js, style.css) تجلب الجديد دائماً
-    event.respondWith(networkFirst(event.request, RUNTIME_CACHE));
+    event.respondWith(networkFirst(event, RUNTIME_CACHE));
   } else if (isKnownCDN) {
-    // مكاتب الـ CDN الخارجية تستخدم الكاش لتسريع الفتح
+    // مكتبات الـ CDN: كاش أولاً لسرعة الفتح
     event.respondWith(
-      caches.match(event.request).then((cached) => cached || fetch(event.request))
+      caches.match(request).then((cached) => cached || fetch(request))
     );
   }
 });
