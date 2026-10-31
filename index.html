@@ -91,18 +91,12 @@
 
     <script type="text/babel" src="app.js"></script>
 
-    <!-- كود إغلاق آمن لشاشة التحميل لضمان فتح الموقع فوراً دون انتظار -->
+    <!-- احتياطي فقط: لو التطبيق تعطل نهائياً تُزال شاشة التحميل بعد 20 ثانية. الإزالة العادية تتم من app.js بعد رسم أول صفحة -->
     <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const overlay = document.getElementById('loadingOverlay');
-                if (overlay) {
-                    overlay.style.opacity = '0';
-                    overlay.style.visibility = 'hidden';
-                    setTimeout(() => overlay.remove(), 250);
-                }
-            }, 300);
-        });
+        setTimeout(function () {
+            var o = document.getElementById('loadingOverlay');
+            if (o) o.remove();
+        }, 20000);
     </script>
 <script>
     if ('serviceWorker' in navigator) {
