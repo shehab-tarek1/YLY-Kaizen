@@ -24,9 +24,11 @@ const firebaseConfig = {
     messagingSenderId: "599868603298",
     appId: "1:599868603298:web:f66010961895c707cb10fb"
 };
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+// نسخة Firebase باسم 'admin': جلسة الدخول بتتحفظ منفصلة عن الموقع الأساسي
+// (نفس الدومين لكن مفتاح تخزين مختلف) فمفيش تداخل بين حساب الأدمن وحساب العضو
+const adminApp = firebase.apps.find(a => a.name === 'admin') || firebase.initializeApp(firebaseConfig, 'admin');
+const db = adminApp.firestore();
+const auth = adminApp.auth();
 
 // 5 Committees Only
 const COMMITTEES = ['HR', 'PR', 'OR', 'SM', 'Training'];
