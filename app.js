@@ -36,6 +36,13 @@ const firebaseConfig = {
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.firestore();
 const auth = firebase.auth();
+// حفظ الأفكار على الجهاز لتظهر عند ضعف أو انقطاع الإنترنت
+db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+
+const HOME_ENTRY = { tab: 'home', ideaId: null, profileData: null };
+const PAGE_SIZE = 10;
+// createdAt == null يعني فكرة لسه بتتكتب (الوقت مؤقتاً الآن)، و undefined يعني فكرة قديمة بدون تاريخ
+const ideaTime = (i) => i.createdAt === null ? Date.now() : (i.createdAt?.toMillis?.() ?? 0);
 
 const getInitials = (name) => {
     if (!name || typeof name !== 'string') return 'YL';
@@ -178,70 +185,96 @@ function YlyKaizenApp() {
     const [toast, setToast] = useState(null);
     const [fullScreenImage, setFullScreenImage] = useState(null);
 
-    // مراجع لإدارة مواضع التمرير لكل صفحة على حدة وتاريخ التنقل
+    // مراجع لإدارة مواضع التمرير وتاريخ التنقل
     const mainContainerRef = useRef(null);
     const tabScrollPositions = useRef({});
-    const [historyStack, setHistoryStack] = useState([{ tab: 'home', ideaId: null, profileData: null }]);
+    // سجل التنقل الداخلي: مرآة لسجل المتصفح (كل عنصر = idx في history.state)
+    const stackRef = useRef([HOME_ENTRY]);
+    const lbOpenRef = useRef(false);
+    const profileReqRef = useRef(null);
 
-    // دالة الانتقال الذكية: تمنع توريث النزول للصفحات الأخرى
+    const applyEntry = useCallback((entry) => {
+        setSelectedIdeaId(entry.ideaId ?? null);
+        setViewProfileData(entry.profileData ?? null);
+        setActiveTab(entry.tab || 'home');
+    }, []);
+
     const navigateTo = useCallback((tab, extra = {}) => {
-        // حفظ مكانك في الصفحة الرئيسية فقط إذا كنت واقفاً فيها
         if (mainContainerRef.current && activeTab === 'home') {
             tabScrollPositions.current['home'] = mainContainerRef.current.scrollTop;
         }
-
-        if (extra.ideaId !== undefined) setSelectedIdeaId(extra.ideaId);
-        if (extra.profileData !== undefined) setViewProfileData(extra.profileData);
-
-        setHistoryStack(prev => {
-            const last = prev[prev.length - 1];
-            if (last && last.tab === tab && last.ideaId === (extra.ideaId || null)) {
-                return prev;
-            }
-            return [...prev, { tab, ideaId: extra.ideaId || null, profileData: extra.profileData || null }];
-        });
-
-        try {
-            window.history.pushState({ tab, ideaId: extra.ideaId || null }, '');
-        } catch(e) {}
-
-        setActiveTab(tab);
-    }, [activeTab]);
-
-    const goBack = useCallback(() => {
-        if (fullScreenImage) {
-            setFullScreenImage(null);
-            return;
-        }
-
-        const cleanStack = historyStack.filter(item => item.tab !== 'auth');
-
-        if (cleanStack.length > 1) {
-            const newStack = [...cleanStack];
-            newStack.pop();
-            const prev = newStack[newStack.length - 1] || { tab: 'home' };
-
-            setHistoryStack(newStack);
-            if (prev.ideaId !== undefined) setSelectedIdeaId(prev.ideaId);
-            if (prev.profileData !== undefined) setViewProfileData(prev.profileData);
-            setActiveTab(prev.tab || 'home');
+        const entry = { tab, ideaId: extra.ideaId ?? null, profileData: extra.profileData ?? null };
+        const stack = stackRef.current;
+        const top = stack[stack.length - 1];
+        const same = top && top.tab === entry.tab && top.ideaId === entry.ideaId &&
+            (top.profileData?.uid ?? null) === (entry.profileData?.uid ?? null);
+        if (same) {
+            stack[stack.length - 1] = entry;
         } else {
-            setHistoryStack([{ tab: 'home', ideaId: null, profileData: null }]);
-            if (activeTab !== 'home') {
-                setActiveTab('home');
-            }
+            stack.push(entry);
+            try { window.history.pushState({ idx: stack.length - 1 }, ''); } catch (e) {}
         }
-    }, [fullScreenImage, historyStack, activeTab]);
+        applyEntry(entry);
+    }, [activeTab, applyEntry]);
 
-    // يمنع أي اهتزاز أو نزول بالعين، ويرجعك لمكانك السابق بصمت تام
+    // زر "عودة" يستخدم history.back، وحدث popstate هو المصدر الوحيد للحقيقة
+    const goBack = useCallback(() => {
+        if (lbOpenRef.current || stackRef.current.length > 1) window.history.back();
+        else applyEntry(HOME_ENTRY);
+    }, [applyEntry]);
+
+    // الرجوع للرئيسية مع تنظيف السجل (بعد الخروج أو إرسال فكرة)
+    const resetToHome = useCallback(() => {
+        const n = stackRef.current.length - 1;
+        if (n > 0) window.history.go(-n);
+        else applyEntry(HOME_ENTRY);
+    }, [applyEntry]);
+
+    // بعد تسجيل الدخول: نشيل صفحة الدخول من السجل ونرجع للصفحة اللي كان فيها
+    const leaveAuth = useCallback(() => {
+        const stack = stackRef.current;
+        const top = stack[stack.length - 1];
+        if (top && top.tab === 'auth' && stack.length > 1) window.history.back();
+        else applyEntry(HOME_ENTRY);
+    }, [applyEntry]);
+
+    const openLightbox = useCallback((src) => {
+        if (!src) return;
+        if (!lbOpenRef.current) {
+            lbOpenRef.current = true;
+            try { window.history.pushState({ idx: stackRef.current.length - 1, lb: true }, ''); } catch (e) {}
+        }
+        setFullScreenImage(src);
+    }, []);
+
+    const closeLightbox = useCallback(() => {
+        if (lbOpenRef.current) window.history.back();
+        else setFullScreenImage(null);
+    }, []);
+
+    useEffect(() => {
+        try { window.history.replaceState({ idx: 0 }, ''); } catch (e) {}
+        const onPop = (e) => {
+            if (lbOpenRef.current) {
+                lbOpenRef.current = false;
+                setFullScreenImage(null);
+                return;
+            }
+            const idx = (e.state && typeof e.state.idx === 'number') ? e.state.idx : 0;
+            const target = Math.min(idx, stackRef.current.length - 1);
+            stackRef.current = stackRef.current.slice(0, target + 1);
+            applyEntry(stackRef.current[target]);
+        };
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+    }, [applyEntry]);
+
+    // استعادة مكانك في الرئيسية، وفتح أي صفحة تانية من فوق
     useEffect(() => {
         if (mainContainerRef.current) {
             if (activeTab === 'home') {
-                // استعادة مكانك السابق في الرئيسية فوراً
-                const savedPos = tabScrollPositions.current['home'] || 0;
-                mainContainerRef.current.scrollTop = savedPos;
+                mainContainerRef.current.scrollTop = tabScrollPositions.current['home'] || 0;
             } else {
-                // فتح أي صفحة جديدة من البداية فوق
                 mainContainerRef.current.scrollTop = 0;
             }
         }
@@ -263,6 +296,10 @@ function YlyKaizenApp() {
     // Data
     const [ideas, setIdeas] = useState([]);
     const [ideasLoaded, setIdeasLoaded] = useState(false);
+    const [loadError, setLoadError] = useState(false);
+    const [retryKey, setRetryKey] = useState(0);
+    const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+    const sentinelRef = useRef(null);
     const [newIdea, setNewIdea] = useState({ title: '', problem: '', solution: '', committee: 'HR', expectedImpact: 'High' });
     const [isSubmittingIdea, setIsSubmittingIdea] = useState(false);
 
@@ -313,14 +350,6 @@ useEffect(() => {
 
  
 
-// دعم زر الرجوع الخاص بالهاتف أو المتصفح بسلاسة
-useEffect(() => {
-    const handlePopState = () => {
-        goBack();
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-}, [goBack]);
 
     // Debounce search input to prevent any typing lag
     useEffect(() => {
@@ -356,31 +385,42 @@ useEffect(() => {
     }, []);
 
     useEffect(() => {
-        const unsubscribe = db.collection('ideas')
-            .onSnapshot(
-                snapshot => {
-                    const fetchedIdeas = (snapshot ? snapshot.docs : []).map(doc => {
-                        const d = doc.data() || {};
-                        return {
-                            id: doc.id,
-                            ...d,
-                            status: d.status || 'submitted',
-                            upvotes: d.upvotes || 0,
-                            upvoters: d.upvoters || [],
-                            commentsList: d.commentsList || []
-                        };
-                    });
-                    fetchedIdeas.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-                    setIdeas(fetchedIdeas);
-                    setIdeasLoaded(true);
-                },
-                err => { 
-                    console.error("خطأ في جلب الأفكار:", err); 
-                    setIdeasLoaded(true); 
-                }
-            );
-        return () => unsubscribe();
-    }, []);
+        let gotData = false;
+        const failTimer = setTimeout(() => {
+            if (!gotData) setLoadError(true);
+        }, 10000);
+
+        const unsubscribe = db.collection('ideas').onSnapshot(
+            { includeMetadataChanges: true },
+            snapshot => {
+                // رد فاضي جاي من الكاش: استنى رد السيرفر الحقيقي
+                if (snapshot.empty && snapshot.metadata.fromCache) return;
+
+                gotData = true;
+                clearTimeout(failTimer);
+                const fetchedIdeas = snapshot.docs.map(doc => {
+                    const d = doc.data() || {};
+                    return {
+                        id: doc.id,
+                        ...d,
+                        status: d.status || 'submitted',
+                        upvotes: d.upvotes || 0,
+                        upvoters: d.upvoters || [],
+                        commentsList: d.commentsList || []
+                    };
+                });
+                fetchedIdeas.sort((a, b) => ideaTime(b) - ideaTime(a));
+                setIdeas(fetchedIdeas);
+                setIdeasLoaded(true);
+                setLoadError(false);
+            },
+            err => {
+                console.error("خطأ في جلب الأفكار:", err);
+                setLoadError(true);
+            }
+        );
+        return () => { clearTimeout(failTimer); unsubscribe(); };
+    }, [retryKey]);
 
   // تصفية الأفكار: تضمن ظهور كل الأفكار فوراً للزائر دون أي حجب
     const filteredAndSortedIdeas = useMemo(() => {
@@ -410,13 +450,36 @@ useEffect(() => {
 
         // الترتيب
         if (sortBy === 'oldest') {
-            result.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+            result.sort((a, b) => ideaTime(a) - ideaTime(b));
         } else {
-            result.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            result.sort((a, b) => ideaTime(b) - ideaTime(a));
         }
 
         return result;
     }, [ideas, debouncedSearch, filterStatus, filterCommittee, sortBy]);
+
+    // عند تغيير البحث أو الفلتر نبدأ من أول 10
+    useEffect(() => {
+        setVisibleCount(PAGE_SIZE);
+    }, [debouncedSearch, filterStatus, filterCommittee, sortBy]);
+
+    // تحميل 10 إضافية كلما اقتربت من آخر القائمة
+    const hasMore = visibleCount < filteredAndSortedIdeas.length;
+    useEffect(() => {
+        if (activeTab !== 'home' || !hasMore) return;
+        if (!('IntersectionObserver' in window)) {
+            setVisibleCount(filteredAndSortedIdeas.length);
+            return;
+        }
+        const el = sentinelRef.current;
+        const root = mainContainerRef.current;
+        if (!el || !root) return;
+        const obs = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) setVisibleCount(c => c + PAGE_SIZE);
+        }, { root, rootMargin: '400px' });
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [activeTab, hasMore, visibleCount, ideasLoaded]);
 
     const topUsers = useMemo(() => {
         const userStats = {};
@@ -481,8 +544,7 @@ useEffect(() => {
                 showToast('تم إنشاء الحساب بنجاح');
             }
             // تصفير سجل التنقل تماماً لمنع زر الرجوع من فتح صفحة الدخول مجدداً
-            setHistoryStack([{ tab: 'home', ideaId: null, profileData: null }]);
-            setActiveTab('home');
+            leaveAuth();
             setAuthData({ name: '', phone: '', email: '', password: '', committee: 'HR' });
             setSignupImageFile(null);
             setSignupImagePreview(null);
@@ -622,7 +684,7 @@ useEffect(() => {
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             setNewIdea({ title: '', problem: '', solution: '', committee: 'HR', expectedImpact: 'High' });
-            navigateTo('home');
+            resetToHome();
             showToast('تم إرسال فكرتك للإدارة بنجاح');
         } catch (err) {
             showToast('تعذر إرسال الفكرة', 'error');
@@ -671,20 +733,27 @@ useEffect(() => {
             name, uid, avatar: avatar || '', committee: committee || "عضو",
             phone: '...', email: '...'
         };
+        profileReqRef.current = uid;
         navigateTo('profile', { profileData: initialData });
 
         try {
             const userDoc = await db.collection('users').doc(uid).get();
-            if (userDoc.exists) {
+            if (userDoc.exists && profileReqRef.current === uid) {
                 const d = userDoc.data();
-                setViewProfileData({
+                const fullData = {
                     name: d.name || name,
                     uid,
                     avatar: d.avatar || avatar || '',
                     committee: d.committee || committee || "عضو",
                     phone: d.phone || 'غير مسجل',
                     email: d.email || 'غير مسجل'
-                });
+                };
+                const stack = stackRef.current;
+                const top = stack[stack.length - 1];
+                if (top && top.tab === 'profile' && top.profileData?.uid === uid) {
+                    top.profileData = fullData;
+                    setViewProfileData(fullData);
+                }
             }
         } catch(err) {
             console.error(err);
@@ -733,8 +802,8 @@ useEffect(() => {
 
             {/* Image Lightbox */}
             {fullScreenImage && (
-                <div className="fixed inset-0 bg-black/95 z-[999] flex items-center justify-center p-4 animate-fade-in" onClick={() => setFullScreenImage(null)}>
-                    <button onClick={() => setFullScreenImage(null)} className="absolute top-5 right-5 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20">
+                <div className="fixed inset-0 bg-black/95 z-[999] flex items-center justify-center p-4 animate-fade-in" onClick={closeLightbox}>
+                    <button onClick={closeLightbox} className="absolute top-5 right-5 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20">
                         <X size={24} />
                     </button>
                     <img src={fullScreenImage} onClick={e => e.stopPropagation()} className="max-w-full max-h-[80vh] rounded-2xl shadow-2xl object-contain border border-white/10" alt="" />
@@ -884,13 +953,25 @@ useEffect(() => {
                             )}
                         </div> 
 
-                        {!ideasLoaded && <div className="text-center mt-10"><span className="spinner text-navy"></span></div>}
-                        {ideasLoaded && filteredAndSortedIdeas.length === 0 && (
+                        {!ideasLoaded && !loadError && (
+                            <div className="text-center mt-10"><span className="spinner text-navy"></span></div>
+                        )}
+                        {!ideasLoaded && loadError && (
                             <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
-                                <p className="text-xs font-bold text-slate-400">لا توجد أفكار مطابقة لبحثك</p>
+                                <p className="text-xs font-bold text-slate-500 mb-3">تعذر تحميل الأفكار، تأكد من الاتصال بالإنترنت</p>
+                                <button onClick={() => { setLoadError(false); setRetryKey(k => k + 1); }} className="bg-navy text-white text-xs font-bold px-4 py-2 rounded-xl active:scale-95">
+                                    إعادة المحاولة
+                                </button>
                             </div>
                         )}
-                        {filteredAndSortedIdeas.map(idea => {
+                        {ideasLoaded && filteredAndSortedIdeas.length === 0 && (
+                            <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
+                                <p className="text-xs font-bold text-slate-400">
+                                    {ideas.length === 0 ? 'لا توجد أفكار بعد' : 'لا توجد أفكار مطابقة لبحثك'}
+                                </p>
+                            </div>
+                        )}
+                        {filteredAndSortedIdeas.slice(0, visibleCount).map(idea => {
                             const isUpvoted = user && (idea.upvoters || []).includes(user.uid);
                             return (
                                //  الجزء الجديد (مسافات ملمومة وأنيقة ومتوازنة من كل الجهات):
@@ -942,6 +1023,9 @@ useEffect(() => {
                                 </article>
                             );
                         })}
+                        {hasMore && (
+                            <div ref={sentinelRef} className="text-center py-4"><span className="spinner text-navy"></span></div>
+                        )}
                         <div className="h-6" aria-hidden="true"></div>
                     </div>
                 )}
@@ -952,7 +1036,7 @@ useEffect(() => {
                         <article className="bg-[#FAFBFD] rounded-3xl p-5 shadow-[0_4px_16px_rgba(0,32,96,0.06)] border-[1.5px] border-[#002060]/30 mb-4 animate-fade-in">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-2.5 min-w-0">
-                                        <UserAvatar src={selectedIdea.avatar} name={selectedIdea.author} size="w-10 h-10" textClass="text-xs" className="cursor-pointer" onClick={() => selectedIdea.avatar && !selectedIdea.avatar.includes('dicebear.com') && setFullScreenImage(selectedIdea.avatar)} />
+                                        <UserAvatar src={selectedIdea.avatar} name={selectedIdea.author} size="w-10 h-10" textClass="text-xs" className="cursor-pointer" onClick={() => selectedIdea.avatar && !selectedIdea.avatar.includes('dicebear.com') && openLightbox(selectedIdea.avatar)} />
                                         <div className="min-w-0" onClick={() => openProfile(selectedIdea.author, selectedIdea.avatar, selectedIdea.authorCommittee, selectedIdea.authorId)}>
                                             <h3 className="font-black text-slate-900 text-sm truncate cursor-pointer leading-snug">{selectedIdea.author}</h3>
                                             <span className="text-[10px] font-black text-ylyred bg-red-50 px-1.5 py-0.5 rounded border border-red-200/70 inline-block mt-0.5">اللجنة المعنية: {selectedIdea.committee}</span>
@@ -1027,7 +1111,7 @@ useEffect(() => {
                                     ) : (
                                         selectedIdea.commentsList.map(comment => (
                                             <div key={comment.id} className="flex gap-2 animate-fade-in">
-                                                <UserAvatar src={comment.avatar} name={comment.author} size="w-8 h-8" textClass="text-[10px]" className="mt-1 cursor-pointer" onClick={() => comment.avatar && !comment.avatar.includes('dicebear.com') && setFullScreenImage(comment.avatar)} />
+                                                <UserAvatar src={comment.avatar} name={comment.author} size="w-8 h-8" textClass="text-[10px]" className="mt-1 cursor-pointer" onClick={() => comment.avatar && !comment.avatar.includes('dicebear.com') && openLightbox(comment.avatar)} />
                                                 <div className="flex-1 bg-[#FAFBFD] p-3 rounded-2xl border border-slate-200/80 shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
                                                     <div className="flex items-center justify-between mb-1">
                                                         <span className="font-black text-slate-900 text-xs">{comment.author}</span>
@@ -1175,8 +1259,7 @@ useEffect(() => {
     setUser(null);
     setUserProfile(null);
     setViewProfileData(null);
-    setHistoryStack([{ tab: 'home', ideaId: null, profileData: null }]);
-    setActiveTab('home');
+    resetToHome();
     showToast('تم تسجيل الخروج بنجاح');
 }} className="w-8 h-8 bg-red-50 text-red-500 rounded-full flex items-center justify-center border border-red-100"><LogOut size={14}/></button>
                                 </div>
@@ -1184,7 +1267,7 @@ useEffect(() => {
 
                             {!isEditingProfile ? (
                                 <>
-                                    <UserAvatar src={viewProfileData.avatar} name={viewProfileData.name} size="w-20 h-20" textClass="text-2xl" className="mx-auto -mt-10 mb-3 border-2 border-white shadow-md cursor-pointer" onClick={() => viewProfileData.avatar && !viewProfileData.avatar.includes('dicebear.com') && setFullScreenImage(viewProfileData.avatar)} />
+                                    <UserAvatar src={viewProfileData.avatar} name={viewProfileData.name} size="w-20 h-20" textClass="text-2xl" className="mx-auto -mt-10 mb-3 border-2 border-white shadow-md cursor-pointer" onClick={() => viewProfileData.avatar && !viewProfileData.avatar.includes('dicebear.com') && openLightbox(viewProfileData.avatar)} />
                                     <h2 className="text-base font-black text-navy mb-1">{viewProfileData.name}</h2>
                                     <span className="inline-block px-3 py-1 bg-red-50 text-ylyred text-[10px] font-bold rounded-lg border border-red-100/70 mb-4">لجنة: {viewProfileData.committee}</span>
 
@@ -1335,4 +1418,3 @@ useEffect(() => {
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<YlyKaizenApp />);
-
