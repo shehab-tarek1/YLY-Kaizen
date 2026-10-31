@@ -1,4 +1,4 @@
-const VERSION = 'v3.9.0';
+const VERSION = 'v4.0.0';
 const PREFIX = 'kaizen-yly-';
 const STATIC_CACHE = `${PREFIX}static-${VERSION}`;
 const RUNTIME_CACHE = `${PREFIX}runtime-${VERSION}`;
@@ -96,13 +96,13 @@ async function handleNavigation(event) {
   try {
     const preload = event.preloadResponse ? await event.preloadResponse : null;
     const res = preload || (await Promise.race([fetch(event.request), timeout(NAV_TIMEOUT_MS)]));
-    if (res && res.ok) cache.put('./index.html', res.clone());
+    if (res && res.ok) cache.put(event.request, res.clone());
     return res;
   } catch {
     return (
+      (await cache.match(event.request)) ||
       (await cache.match('./index.html')) ||
       (await cache.match('./')) ||
-      (await cache.match(event.request)) ||
       Response.error()
     );
   }
