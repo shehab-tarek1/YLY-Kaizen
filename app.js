@@ -37,6 +37,8 @@ if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.firestore();
 const auth = firebase.auth();
 // حفظ الأفكار على الجهاز لتظهر عند ضعف أو انقطاع الإنترنت
+// يكتشف تلقائياً لو الاتصال العادي محجوب (شائع على شبكات الموبايل) ويتحول لبديل
+try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e) {}
 db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
 const HOME_ENTRY = { tab: 'home', ideaId: null, profileData: null };
@@ -178,6 +180,72 @@ const CustomSelect = ({ value, options, onChange, placeholder, colorClass="focus
         </div>
     );
 };
+
+const StatusPill = ({ status }) => {
+    const stage = STATUS_STAGES.find(s => s.id === status) || STATUS_STAGES[0];
+    let styles = 'bg-slate-50 text-slate-600 border-slate-200';
+    let icon = <Clock size={11} />;
+
+    if(status === 'standardized') { styles = 'bg-emerald-50 text-emerald-700 border-emerald-200'; icon = <Award size={11} />; }
+    else if(status === 'implemented') { styles = 'bg-blue-50 text-blue-700 border-blue-200'; icon = <CheckCircle2 size={11} />; }
+    else if(status === 'experiment' || status === 'measuring') { styles = 'bg-orange-50 text-orange-700 border-orange-200'; icon = <TrendingUp size={11} />; }
+    else if(status === 'approved') { styles = 'bg-amber-50 text-amber-700 border-amber-200'; icon = <CheckCircle2 size={11} />; }
+    else if(status === 'rejected') { styles = 'bg-red-50 text-red-600 border-red-200'; icon = <XCircle size={11} />; }
+
+    return (
+        <span className={`px-2 py-0.5 text-[10px] md:text-[11px] font-bold rounded-full border flex items-center gap-1 shrink-0 ${styles}`}>
+            {icon} {stage.label}
+        </span>
+    );
+};
+
+const IdeaCard = React.memo(({ idea, isUpvoted, isPending, actionsRef }) => (
+<article 
+onClick={() => actionsRef.current.navigateTo('idea-details', { ideaId: idea.id })} 
+    className="rounded-2xl border-[1.5px] border-[#002060]/30 bg-[#FAFBFD] shadow-[0_3px_12px_rgba(0,32,96,0.06)] hover:border-[#002060]/60 cursor-pointer active:scale-[0.99] transition-all overflow-hidden"
+>
+    <div className="pt-3 px-3.5 pb-2.5">
+        <div className="flex justify-between items-start mb-1.5 gap-2">
+            <div className="flex items-center gap-2.5 hover:opacity-85 min-w-0" onClick={(e) => { e.stopPropagation(); actionsRef.current.openProfile(idea.author, idea.avatar, idea.authorCommittee, idea.authorId, e); }}>
+                <UserAvatar src={idea.avatar} name={idea.author} size="w-9 h-9" textClass="text-[11px]" />
+                <div className="min-w-0">
+                    <h3 className="font-black text-slate-900 text-xs truncate leading-snug">{idea.author}</h3>
+                    <span className="text-[9px] font-black text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-200/70 inline-block mt-0.5 truncate">
+                        اللجنة المعنية: {idea.committee}
+                    </span>
+                </div>
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+                <span className="text-[9px] font-bold text-slate-500">{idea.timeAgo}</span>
+                <StatusPill status={idea.status} />
+            </div>
+        </div>
+
+        <div className="flex items-baseline gap-1.5 mb-1.5 -mt-1"><span className="text-[10.5px] font-bold text-slate-400 shrink-0">عنوان الفكرة:</span><h2 className="text-sm font-black text-[#001845] leading-snug tracking-tight">{idea.title}</h2></div>
+
+        <div className="space-y-1.5">
+            <div className="bg-[#FFF5F5] rounded-xl p-2.5 border-[1.75px] border-red-200/90 shadow-[0_1px_4px_rgba(227,6,19,0.04)]">
+                <span className="text-[10px] font-black text-ylyred block mb-0.5">المشكلة الحالية:</span>
+                <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-semibold">{idea.problem}</p>
+            </div>
+            <div className="bg-[#F0F5FF] rounded-xl p-2.5 border-[1.75px] border-blue-200/90 shadow-[0_1px_4px_rgba(0,32,96,0.04)]">
+                <span className="text-[10px] font-black text-[#002060] block mb-0.5">الحل المقترح (كايزن):</span>
+                <p className="text-xs text-slate-800 line-clamp-2 leading-relaxed font-semibold">{idea.solution}</p>
+            </div>
+        </div>
+    </div>
+
+    <div className="px-3.5 py-2 bg-[#F1F5F9]/60 border-t border-slate-200/70 flex items-center justify-between">
+                                        <button onClick={(e) => actionsRef.current.handleUpvote(idea.id, e)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs transition-colors border ${isUpvoted ? 'bg-[#002060] text-white border-[#002060]' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                                            {isPending ? <span className="spinner"></span> : <Flame size={13} className={isUpvoted ? "text-orange-400 fill-orange-400" : "text-slate-400"} />}
+                                            <span>{idea.upvotes || 0} دعم</span>
+                                        </button>
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-black text-[#002060] bg-blue-50/80 border border-blue-200/80 rounded-xl">
+                                            <MessageSquare size={13} /> <span>{idea.commentsList?.length || 0} تعليق</span>
+                                        </div>
+                                    </div>
+                                </article>
+));
 
 function YlyKaizenApp() {
     const [activeTab, setActiveTab] = useState('home');
@@ -388,7 +456,11 @@ useEffect(() => {
         let gotData = false;
         const failTimer = setTimeout(() => {
             if (!gotData) setLoadError(true);
-        }, 10000);
+        }, 12000);
+        // لو الاتصال علق بعد 5 ثواني نعيد تشغيل شبكة Firestore تلقائياً
+        const nudgeTimer = setTimeout(() => {
+            if (!gotData) db.disableNetwork().then(() => db.enableNetwork()).catch(() => {});
+        }, 5000);
 
         const unsubscribe = db.collection('ideas').onSnapshot(
             { includeMetadataChanges: true },
@@ -398,6 +470,7 @@ useEffect(() => {
 
                 gotData = true;
                 clearTimeout(failTimer);
+                clearTimeout(nudgeTimer);
                 const fetchedIdeas = snapshot.docs.map(doc => {
                     const d = doc.data() || {};
                     return {
@@ -419,8 +492,17 @@ useEffect(() => {
                 setLoadError(true);
             }
         );
-        return () => { clearTimeout(failTimer); unsubscribe(); };
+        return () => { clearTimeout(failTimer); clearTimeout(nudgeTimer); unsubscribe(); };
     }, [retryKey]);
+
+    // لو رجع النت ولسه الأفكار ما اتحملتش، نعيد المحاولة تلقائياً
+    useEffect(() => {
+        const onOnline = () => {
+            if (!ideasLoaded) { setLoadError(false); setRetryKey(k => k + 1); }
+        };
+        window.addEventListener('online', onOnline);
+        return () => window.removeEventListener('online', onOnline);
+    }, [ideasLoaded]);
 
   // تصفية الأفكار: تضمن ظهور كل الأفكار فوراً للزائر دون أي حجب
     const filteredAndSortedIdeas = useMemo(() => {
@@ -760,6 +842,10 @@ useEffect(() => {
         }
     };
 
+    // مرجع ثابت للدوال عشان كروت الأفكار ما تتعملش render من جديد بدون داعي
+    const actionsRef = useRef({});
+    actionsRef.current = { navigateTo, openProfile, handleUpvote };
+
     const requireAuth = (nextTab) => {
         if (user) navigateTo(nextTab);
         else navigateTo('auth');
@@ -771,23 +857,6 @@ useEffect(() => {
     const isVisitingOtherProfile = activeTab === 'profile' && viewProfileData && (!user || viewProfileData.uid !== user?.uid);
     const showBottomNav = ['home', 'leaderboard', 'library'].includes(activeTab) || (activeTab === 'profile' && !isVisitingOtherProfile);
 
-    const StatusPill = ({ status }) => {
-        const stage = STATUS_STAGES.find(s => s.id === status) || STATUS_STAGES[0];
-        let styles = 'bg-slate-50 text-slate-600 border-slate-200';
-        let icon = <Clock size={11} />;
-
-        if(status === 'standardized') { styles = 'bg-emerald-50 text-emerald-700 border-emerald-200'; icon = <Award size={11} />; }
-        else if(status === 'implemented') { styles = 'bg-blue-50 text-blue-700 border-blue-200'; icon = <CheckCircle2 size={11} />; }
-        else if(status === 'experiment' || status === 'measuring') { styles = 'bg-orange-50 text-orange-700 border-orange-200'; icon = <TrendingUp size={11} />; }
-        else if(status === 'approved') { styles = 'bg-amber-50 text-amber-700 border-amber-200'; icon = <CheckCircle2 size={11} />; }
-        else if(status === 'rejected') { styles = 'bg-red-50 text-red-600 border-red-200'; icon = <XCircle size={11} />; }
-
-        return (
-            <span className={`px-2 py-0.5 text-[10px] md:text-[11px] font-bold rounded-full border flex items-center gap-1 shrink-0 ${styles}`}>
-                {icon} {stage.label}
-            </span>
-        );
-    };
 
     return (
         <div dir="rtl" className="flex flex-col h-screen overflow-hidden relative font-sans text-slate-800">
@@ -848,8 +917,8 @@ useEffect(() => {
             <main ref={mainContainerRef} className={`flex-1 overflow-y-auto pt-[70px] px-3.5 hide-scroll relative z-10 
                 ${showBottomNav ? 'pb-[85px]' : activeTab === 'idea-details' ? 'pb-32' : 'pb-6'}`}>
                 {/* 1. KAIZEN BOARD */}
-                {activeTab === 'home' && (
-                    <div className="max-w-xl mx-auto space-y-3.5 pb-10">
+                {(
+                    <div style={{ display: activeTab === 'home' ? 'block' : 'none' }} className="max-w-xl mx-auto space-y-3.5 pb-10">
 
                         {/* Welcome Card */}
                         <div className="bg-gradient-to-br from-[#17325D] via-[#132A52] to-[#102444] rounded-3xl p-5 text-white shadow-xl relative overflow-hidden mb-2 animate-fade-in border border-blue-400/25">
@@ -973,55 +1042,7 @@ useEffect(() => {
                         )}
                         {filteredAndSortedIdeas.slice(0, visibleCount).map(idea => {
                             const isUpvoted = user && (idea.upvoters || []).includes(user.uid);
-                            return (
-                               //  الجزء الجديد (مسافات ملمومة وأنيقة ومتوازنة من كل الجهات):
-<article 
-    key={idea.id} 
-    onClick={() => navigateTo('idea-details', { ideaId: idea.id })} 
-    className="rounded-2xl border-[1.5px] border-[#002060]/30 bg-[#FAFBFD] shadow-[0_3px_12px_rgba(0,32,96,0.06)] hover:border-[#002060]/60 cursor-pointer active:scale-[0.99] transition-all overflow-hidden"
->
-    <div className="pt-3 px-3.5 pb-2.5">
-        <div className="flex justify-between items-start mb-1.5 gap-2">
-            <div className="flex items-center gap-2.5 hover:opacity-85 min-w-0" onClick={(e) => { e.stopPropagation(); openProfile(idea.author, idea.avatar, idea.authorCommittee, idea.authorId, e); }}>
-                <UserAvatar src={idea.avatar} name={idea.author} size="w-9 h-9" textClass="text-[11px]" />
-                <div className="min-w-0">
-                    <h3 className="font-black text-slate-900 text-xs truncate leading-snug">{idea.author}</h3>
-                    <span className="text-[9px] font-black text-[#E30613] bg-red-50 px-1.5 py-0.5 rounded border border-red-200/70 inline-block mt-0.5 truncate">
-                        اللجنة المعنية: {idea.committee}
-                    </span>
-                </div>
-            </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
-                <span className="text-[9px] font-bold text-slate-500">{idea.timeAgo}</span>
-                <StatusPill status={idea.status} />
-            </div>
-        </div>
-
-        <div className="flex items-baseline gap-1.5 mb-1.5 -mt-1"><span className="text-[10.5px] font-bold text-slate-400 shrink-0">عنوان الفكرة:</span><h2 className="text-sm font-black text-[#001845] leading-snug tracking-tight">{idea.title}</h2></div>
-
-        <div className="space-y-1.5">
-            <div className="bg-[#FFF5F5] rounded-xl p-2.5 border-[1.75px] border-red-200/90 shadow-[0_1px_4px_rgba(227,6,19,0.04)]">
-                <span className="text-[10px] font-black text-ylyred block mb-0.5">المشكلة الحالية:</span>
-                <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-semibold">{idea.problem}</p>
-            </div>
-            <div className="bg-[#F0F5FF] rounded-xl p-2.5 border-[1.75px] border-blue-200/90 shadow-[0_1px_4px_rgba(0,32,96,0.04)]">
-                <span className="text-[10px] font-black text-[#002060] block mb-0.5">الحل المقترح (كايزن):</span>
-                <p className="text-xs text-slate-800 line-clamp-2 leading-relaxed font-semibold">{idea.solution}</p>
-            </div>
-        </div>
-    </div>
-
-    <div className="px-3.5 py-2 bg-[#F1F5F9]/60 border-t border-slate-200/70 flex items-center justify-between">
-                                        <button onClick={(e) => handleUpvote(idea.id, e)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs transition-colors border ${isUpvoted ? 'bg-[#002060] text-white border-[#002060]' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
-                                            {pendingVotes[idea.id] ? <span className="spinner"></span> : <Flame size={13} className={isUpvoted ? "text-orange-400 fill-orange-400" : "text-slate-400"} />}
-                                            <span>{idea.upvotes || 0} دعم</span>
-                                        </button>
-                                        <div className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-black text-[#002060] bg-blue-50/80 border border-blue-200/80 rounded-xl">
-                                            <MessageSquare size={13} /> <span>{idea.commentsList?.length || 0} تعليق</span>
-                                        </div>
-                                    </div>
-                                </article>
-                            );
+                            return <IdeaCard key={idea.id} idea={idea} isUpvoted={!!isUpvoted} isPending={!!pendingVotes[idea.id]} actionsRef={actionsRef} />;
                         })}
                         {hasMore && (
                             <div ref={sentinelRef} className="text-center py-4"><span className="spinner text-navy"></span></div>
