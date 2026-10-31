@@ -734,7 +734,8 @@ useEffect(() => {
                 });
             }
         } catch (err) {
-            showToast('تعذر تسجيل الإعجاب', 'error');
+            console.error('upvote error:', err);
+            showToast('تعذر تسجيل الإعجاب' + (err && err.code ? ' (' + err.code + ')' : ''), 'error');
         } finally {
             setPendingVotes(p => { const n = { ...p }; delete n[id]; return n; });
         }
@@ -769,7 +770,8 @@ useEffect(() => {
             resetToHome();
             showToast('تم إرسال فكرتك للإدارة بنجاح');
         } catch (err) {
-            showToast('تعذر إرسال الفكرة', 'error');
+            console.error('idea error:', err);
+            showToast('تعذر إرسال الفكرة' + (err && err.code ? ' (' + err.code + ')' : ''), 'error');
         } finally {
             setIsSubmittingIdea(false);
         }
@@ -800,7 +802,8 @@ useEffect(() => {
             });
         } catch (err) {
             setNewComment(commentText);
-            showToast('تعذر إرسال التعليق، تحقق من الاتصال', 'error');
+            console.error('comment error:', err);
+            showToast('تعذر إرسال التعليق' + (err && err.code ? ' (' + err.code + ')' : ''), 'error');
         } finally {
             setIsCommenting(false);
         }
@@ -1439,3 +1442,4 @@ useEffect(() => {
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<YlyKaizenApp />);
+
